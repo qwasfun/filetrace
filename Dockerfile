@@ -22,9 +22,10 @@ WORKDIR /app
 # 拷贝后端
 COPY api/ ./api
 
+ENV PATH="/app/api/.venv/bin:$PATH"
+
 # 安装后端依赖
-RUN pip install --no-cache-dir -r api/requirements.txt
-RUN ls .
+RUN cd api && pip install uv && uv sync
 
 # 拷贝前端静态文件到 FastAPI
 COPY --from=frontend-builder /app/web/dist ./api/app/static

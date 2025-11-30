@@ -6,11 +6,10 @@ from pathlib import Path
 app = FastAPI()
 
 
-
-
 @app.get("/api/hello")
 async def hello():
     return {"message": "Hello World"}
+
 
 # 前端静态目录
 dist_path = Path(__file__).parent / "static"
