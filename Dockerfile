@@ -24,8 +24,9 @@ COPY api/ ./api
 
 ENV PATH="/app/api/.venv/bin:$PATH"
 
+# 拷贝数据目录（确保 sqlite 文件目录存在）  在容器中的数据保存目录为 /app/data
 # 安装后端依赖
-RUN cd api && pip install uv && uv sync
+RUN mkdir data && cd api && pip install uv && uv sync
 
 # 拷贝前端静态文件到 FastAPI
 COPY --from=frontend-builder /app/web/dist ./api/app/static
