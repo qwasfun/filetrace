@@ -1,3 +1,6 @@
+import os
+from dotenv import load_dotenv
+
 import uuid
 from datetime import datetime
 
@@ -7,11 +10,30 @@ from sqlalchemy.orm import declarative_base
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
-# 使用异步 sqlite 驱动 aiosqlite
-DATABASE_URL = "sqlite+aiosqlite:///./data/app.sqlite"
-# engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+load_dotenv()
 
-engine = create_async_engine(DATABASE_URL)
+# 默认使用异步 sqlite 驱动 aiosqlite
+_DEFAULT_SQLITE = "sqlite+aiosqlite:///./data/app.sqlite"
+
+# 支持通过环境变量 `DATABASE_URL` 切换为 Postgres（推荐带 asyncpg 驱动）
+# 如果用户提供常见的 postgres URI（postgres:// 或 postgresql://），
+# 会自动把 scheme 转换为 `postgresql+asyncpg://` 以使用 asyncpg
+raw_db_url = os.getenv("DATABASE_URL", "").strip()
+if raw_db_url:
+    if raw_db_url.startswith("postgres://"):
+        raw_db_url = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif raw_db_url.startswith("postgresql://"):
+        raw_db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    DATABASE_URL = raw_db_url
+else:
+    DATABASE_URL = _DEFAULT_SQLITE
+
+# 对 sqlite 使用特定 connect_args（aiosqlite 的 check_same_thread）
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+else:
+    engine = create_async_engine(DATABASE_URL)
+
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 Base = declarative_base()
