@@ -32,6 +32,8 @@ class Note(Base):
     user_id = Column(String(36), ForeignKey("users.id"))
     title = Column(String)
     content = Column(Text)
+    # visibility: PRIVATE / PROTECTED / PUBLIC, default PRIVATE
+    visibility = Column(String, default="PRIVATE", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 

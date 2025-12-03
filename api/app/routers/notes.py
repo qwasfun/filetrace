@@ -48,7 +48,8 @@ async def create_note(
     note = Note(
         user_id=current_user.id,
         title=note_data.title,
-        content=note_data.content
+        content=note_data.content,
+        visibility=note_data.visibility.value if note_data.visibility is not None else "PRIVATE"
     )
     session.add(note)
     await session.commit()
@@ -74,6 +75,8 @@ async def update_note(
         note.title = note_data.title
     if note_data.content is not None:
         note.content = note_data.content
+    if getattr(note_data, "visibility", None) is not None:
+        note.visibility = note_data.visibility.value
     note.updated_at = datetime.utcnow()
     
     session.add(note)
