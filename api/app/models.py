@@ -28,6 +28,7 @@ class File(Base):
 class Note(Base):
     __tablename__ = "notes"
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String)
     content = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
