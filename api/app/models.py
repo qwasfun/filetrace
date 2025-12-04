@@ -14,14 +14,18 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+
 class File(Base):
     __tablename__ = "files"
     id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"))
     filename = Column(String)
-    path = Column(String)
     mimetype = Column(String)
-    note = Column(Text, nullable=True)
-    tags = Column(String, nullable=True)
+    path = Column(String)
+    url = Column(String)
+    # provider_type: LOCAL / 或其他 default LOCAL
+    # TODO：预留其他存储方式，如 s3
+    provider_type = Column(String, default="LOCAL", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
@@ -36,6 +40,15 @@ class Note(Base):
     visibility = Column(String, default="PRIVATE", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
+
+
+# class Provider(Base):
+#     __tablename__ = "Providers"
+#     id = Column(String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
+#     name = Column(String)
+#     value = Column(String)
+#     created_at = Column(DateTime, default=datetime.utcnow)
+#     updated_at = Column(DateTime, default=datetime.utcnow)
 
 
 class NoteFile(Base):

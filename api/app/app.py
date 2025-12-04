@@ -5,11 +5,9 @@ from pathlib import Path
 
 from api.app.database import create_db_and_tables
 
-
 from contextlib import asynccontextmanager
 
 from api.app.routers import users, auth, files, notes
-
 
 
 @asynccontextmanager
@@ -32,6 +30,10 @@ app.include_router(notes.router)
 async def hello():
     return {"message": "Hello World"}
 
+
+app.mount("/files",
+          StaticFiles(directory=Path(__file__).parent.parent / "data/files"),
+          name="files")
 
 # 前端静态目录
 dist_path = Path(__file__).parent / "static"
