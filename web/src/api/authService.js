@@ -1,4 +1,4 @@
-import apiV1 from './apiv1'
+import apiV1 from './apiV1'
 
 export function register(formData) {
   return apiV1.post('/auth/register', formData, {
