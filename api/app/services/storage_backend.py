@@ -86,13 +86,23 @@ class LocalStorageBackend(StorageBackend):
     
     def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
         """保存文件到本地磁盘"""
-        # 按日期组织文件
-        date_dir = datetime.now().strftime("%Y%m%d")
-        target_dir = os.path.join(self.base_dir, date_dir)
+        # 生成日期和时间
+        now = datetime.now()
+        date_dir = now.strftime("%Y%m%d")
+        time_prefix = now.strftime("%H%M%S")
+        
+        # 构建路径：userid/日期/时间-文件名
+        if user_id:
+            target_dir = os.path.join(self.base_dir, user_id, date_dir)
+        else:
+            target_dir = os.path.join(self.base_dir, "anonymous", date_dir)
         os.makedirs(target_dir, exist_ok=True)
         
+        # 文件名添加时间前缀
+        filename_with_time = f"{time_prefix}-{file.filename}"
+        filepath = os.path.join(target_dir, filename_with_time)
+        
         # 保存文件
-        filepath = os.path.join(target_dir, file.filename)
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
         
@@ -224,6 +234,7 @@ class S3StorageBackend(StorageBackend):
     def _generate_s3_key(self, filename: str, user_id: str = None) -> str:
         """
         生成 S3 对象键
+        格式：userid/日期/时间-文件名
         
         Args:
             filename: 文件名
@@ -232,10 +243,14 @@ class S3StorageBackend(StorageBackend):
         Returns:
             S3 对象键
         """
-        date_prefix = datetime.now().strftime("%Y/%m/%d")
+        now = datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        time_prefix = now.strftime("%H%M%S")
+        filename_with_time = f"{time_prefix}-{filename}"
+        
         if user_id:
-            return f"{user_id}/{date_prefix}/{filename}"
-        return f"{date_prefix}/{filename}"
+            return f"{user_id}/{date_str}/{filename_with_time}"
+        return f"anonymous/{date_str}/{filename_with_time}"
     
     def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
         """保存文件到 S3"""
