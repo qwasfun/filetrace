@@ -35,11 +35,40 @@ class NoteResponse(BaseModel):
 class FileResponseModel(BaseModel):
     id: str
     user_id: str
+    folder_id: str | None = None
     filename: str
     storage_path: str
     mime_type: str
     size: int
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FileMove(BaseModel):
+    folder_id: str | None
+
+
+class FolderBase(BaseModel):
+    name: str
+    parent_id: str | None = None
+
+
+class FolderCreate(FolderBase):
+    pass
+
+
+class FolderUpdate(BaseModel):
+    name: str | None = None
+    parent_id: str | None = None
+
+
+class FolderResponse(FolderBase):
+    id: str
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

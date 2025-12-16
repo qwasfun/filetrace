@@ -1,6 +1,13 @@
 <script setup>
 import { ref } from 'vue'
 
+const props = defineProps({
+  folderId: {
+    type: String,
+    default: null,
+  },
+})
+
 const emit = defineEmits(['upload-success'])
 const isDragging = ref(false)
 const fileInput = ref(null)
@@ -44,7 +51,11 @@ const uploadFiles = async (files) => {
   }
 
   try {
-    await fileService.uploadFiles(formData)
+    const params = {}
+    if (props.folderId) {
+      params.folder_id = props.folderId
+    }
+    await fileService.uploadFiles(formData, params)
     emit('upload-success')
   } catch (error) {
     console.error('Upload failed', error)

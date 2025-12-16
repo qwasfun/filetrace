@@ -1,11 +1,12 @@
 import service from '@/utils/service'
 
 export default {
-  uploadFiles(formData) {
+  uploadFiles(formData, params) {
     return service.post('/v1/files/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      params,
     })
   },
   getFiles(params) {
@@ -13,5 +14,8 @@ export default {
   },
   deleteFile(id) {
     return service.delete(`/v1/files/${id}`)
+  },
+  moveFile(id, data) {
+    return service.put(`/v1/files/${id}/move`, data)
   },
 }

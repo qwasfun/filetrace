@@ -4,9 +4,9 @@ from fastapi import APIRouter, UploadFile, Depends, HTTPException, File as FastA
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from app.database import get_async_session
-from app.models import File
+from app.models import File, Folder
 from app.services.security import get_current_user
-from app.schemas import FileResponseModel
+from app.schemas import FileResponseModel, FileMove
 from fastapi.responses import FileResponse
 from app.models import User
 from datetime import datetime
@@ -20,6 +20,7 @@ UPLOAD_DIR = "data/uploads"
 
 @router.post("/", response_model=List[FileResponseModel])
 async def upload_files(
+        folder_id: Optional[str] = Query(None),
         files: List[UploadFile] = FastAPIFile(...),
         db: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(get_current_user)
@@ -32,6 +33,7 @@ async def upload_files(
         # Save to DB
         new_file = File(
             user_id=current_user.id,
+            folder_id=folder_id,
             filename=file.filename,
             storage_path=storage_path,
             mime_type=mime_type,
@@ -49,8 +51,34 @@ async def upload_files(
     return results
 
 
+@router.put("/{file_id}/move", response_model=FileResponseModel)
+async def move_file(
+    file_id: str,
+    file_move: FileMove,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(File).where(File.id == file_id, File.user_id == current_user.id)
+    result = await db.execute(stmt)
+    file = result.scalar_one_or_none()
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if file_move.folder_id:
+        folder_stmt = select(Folder).where(Folder.id == file_move.folder_id, Folder.user_id == current_user.id)
+        folder_res = await db.execute(folder_stmt)
+        if not folder_res.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Target folder not found")
+
+    file.folder_id = file_move.folder_id
+    await db.commit()
+    await db.refresh(file)
+    return file
+
+
 @router.get("/")
 async def list_files(
+        folder_id: Optional[str] = None,
         q: Optional[str] = None,
         page: int = Query(1, ge=1, description="页码，从1开始"),
         page_size: int = Query(10, ge=1, le=100, description="每页条数，默认10"),
@@ -63,6 +91,11 @@ async def list_files(
     offset = (page - 1) * page_size
 
     stmt = select(File).where(File.user_id == current_user.id)
+
+    if folder_id:
+        stmt = stmt.where(File.folder_id == folder_id)
+    else:
+        stmt = stmt.where(File.folder_id.is_(None))
 
     if q:
         stmt = stmt.where(File.filename.ilike(f"%{q}%"))

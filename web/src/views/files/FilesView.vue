@@ -1,30 +1,116 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import FileUpload from '../../components/FileUpload.vue'
 import FileGrid from '../../components/FileGrid.vue'
 import FilePreview from '../../components/FilePreview.vue'
 import FileNotes from '../../components/FileNotes.vue'
 import fileService from '../../api/fileService.js'
+import folderService from '../../api/folderService.js'
 
 const files = ref([])
+const folders = ref([])
+const currentFolderId = ref(null)
+const breadcrumbs = ref([{ id: null, name: '首页' }])
 const loading = ref(false)
 const showUploadModal = ref(false)
+const showCreateFolderModal = ref(false)
+const showRenameFolderModal = ref(false)
+const editingFolder = ref(null)
+const newFolderName = ref('')
+const renameFolderName = ref('')
 const previewFile = ref(null)
 const notesFile = ref(null)
 const showNotes = ref(false)
 const searchQuery = ref('')
 const filterType = ref('all')
 
-const loadFiles = async () => {
+const loadData = async () => {
   loading.value = true
   try {
-    const response = await fileService.getFiles()
-    files.value = response.data || []
+    const params = {}
+    if (currentFolderId.value) {
+      params.folder_id = currentFolderId.value
+    }
+    
+    // Load folders
+    const folderParams = {}
+    if (currentFolderId.value) {
+      folderParams.parent_id = currentFolderId.value
+    }
+    
+    const [filesRes, foldersRes] = await Promise.all([
+      fileService.getFiles(params),
+      folderService.getFolders(folderParams)
+    ])
+    
+    files.value = filesRes.data || [] // Assuming pagination structure
+    folders.value = foldersRes || []
   } catch (error) {
-    console.error('Failed to load files', error)
+    console.error('Failed to load data', error)
   } finally {
     loading.value = false
   }
+}
+
+const createFolder = async () => {
+  if (!newFolderName.value.trim()) return
+  
+  try {
+    await folderService.createFolder({
+      name: newFolderName.value,
+      parent_id: currentFolderId.value
+    })
+    newFolderName.value = ''
+    showCreateFolderModal.value = false
+    await loadData()
+  } catch (error) {
+    console.error('Failed to create folder', error)
+  }
+}
+
+const openRenameFolderModal = (folder) => {
+  editingFolder.value = folder
+  renameFolderName.value = folder.name
+  showRenameFolderModal.value = true
+}
+
+const renameFolder = async () => {
+  if (!renameFolderName.value.trim()) return
+  
+  try {
+    await folderService.updateFolder(editingFolder.value.id, {
+      name: renameFolderName.value
+    })
+    showRenameFolderModal.value = false
+    editingFolder.value = null
+    await loadData()
+  } catch (error) {
+    console.error('Failed to rename folder', error)
+  }
+}
+
+const deleteFolder = async (folder) => {
+  if (!confirm(`Are you sure you want to delete folder "${folder.name}" and all its contents?`)) return
+  
+  try {
+    await folderService.deleteFolder(folder.id)
+    await loadData()
+  } catch (error) {
+    console.error('Failed to delete folder', error)
+  }
+}
+
+const openFolder = async (folder) => {
+  currentFolderId.value = folder.id
+  breadcrumbs.value.push({ id: folder.id, name: folder.name })
+  await loadData()
+}
+
+const navigateBreadcrumb = async (index) => {
+  const target = breadcrumbs.value[index]
+  currentFolderId.value = target.id
+  breadcrumbs.value = breadcrumbs.value.slice(0, index + 1)
+  await loadData()
 }
 
 const filteredFiles = computed(() => {
@@ -60,7 +146,7 @@ const filteredFiles = computed(() => {
 })
 
 const handleUploadSuccess = async () => {
-  await loadFiles()
+  await loadData()
   showUploadModal.value = false
 }
 
@@ -68,7 +154,7 @@ const handleDelete = async (id) => {
   if (!confirm('Are you sure you want to delete this file?')) return
   try {
     await fileService.deleteFile(id)
-    await loadFiles()
+    await loadData()
   } catch (error) {
     console.error('Failed to delete file', error)
   }
@@ -100,11 +186,11 @@ const closeNotes = () => {
 
 const handleNoteCreated = () => {
   // 可以在这里刷新文件列表，更新笔记计数
-  loadFiles()
+  loadData()
 }
 
 onMounted(() => {
-  loadFiles()
+  loadData()
 })
 </script>
 
@@ -120,17 +206,74 @@ onMounted(() => {
               保存、查看和管理您的文件，支持多种格式
             </p>
           </div>
-          <button @click="showUploadModal = !showUploadModal" class="btn btn-primary btn-lg gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-              ></path>
-            </svg>
-            {{ showUploadModal ? '关闭上传' : '上传文件' }}
-          </button>
+          <div class="flex gap-2">
+            <button @click="showCreateFolderModal = true" class="btn btn-primary gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              </svg>
+              新建文件夹
+            </button>
+            <button @click="showUploadModal = !showUploadModal" class="btn btn-primary gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                ></path>
+              </svg>
+              {{ showUploadModal ? '关闭上传' : '上传文件' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Breadcrumbs -->
+      <div class="text-sm breadcrumbs mb-4">
+        <ul>
+          <li v-for="(crumb, index) in breadcrumbs" :key="crumb.id">
+            <a @click="navigateBreadcrumb(index)" :class="{'font-bold': index === breadcrumbs.length - 1}">
+              {{ crumb.name }}
+            </a>
+          </li>
+        </ul>
+      </div>
+      <!-- Rename Folder Modal -->
+      <div v-if="showRenameFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 shadow-xl">
+          <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">重命名文件夹</h3>
+          <input 
+            v-model="renameFolderName" 
+            type="text" 
+            placeholder="Folder Name" 
+            class="input input-bordered w-full mb-4"
+            @keyup.enter="renameFolder"
+            autoFocus
+          />
+          <div class="flex justify-end gap-2">
+            <button @click="showRenameFolderModal = false" class="btn btn-ghost">取消</button>
+            <button @click="renameFolder" class="btn btn-primary">保存</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Create Folder Modal -->
+      <div v-if="showCreateFolderModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 shadow-xl">
+          <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">新建文件夹</h3>
+          <input 
+            v-model="newFolderName" 
+            type="text" 
+            placeholder="Folder Name" 
+            class="input input-bordered w-full mb-4"
+            @keyup.enter="createFolder"
+            autoFocus
+          />
+          <div class="flex justify-end gap-2">
+            <button @click="showCreateFolderModal = false" class="btn btn-ghost">取消</button>
+            <button @click="createFolder" class="btn btn-primary">新建</button>
+          </div>
         </div>
       </div>
 
@@ -140,7 +283,7 @@ onMounted(() => {
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
         >
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📤 上传文件</h2>
-          <FileUpload @upload-success="handleUploadSuccess" />
+          <FileUpload :folder-id="currentFolderId" @upload-success="handleUploadSuccess" />
         </div>
       </div>
 
@@ -218,7 +361,7 @@ onMounted(() => {
         </div>
 
         <div
-          v-else-if="filteredFiles.length === 0 && files.length === 0"
+          v-else-if="filteredFiles.length === 0 && files.length === 0 && folders.length === 0"
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-12 text-center border border-gray-200 dark:border-gray-700"
         >
           <div class="text-6xl mb-4">📂</div>
@@ -228,10 +371,11 @@ onMounted(() => {
         </div>
 
         <div
-          v-else-if="filteredFiles.length === 0"
+          v-else-if="filteredFiles.length === 0 && folders.length === 0"
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-12 text-center border border-gray-200 dark:border-gray-700"
         >
           <div class="text-6xl mb-4">🔍</div>
+
           <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
             未找到匹配文件
           </h3>
@@ -244,10 +388,14 @@ onMounted(() => {
         >
           <FileGrid
             :files="filteredFiles"
+            :folders="folders"
             @delete-file="handleDelete"
             @preview-file="handlePreview"
             @add-note="handleAddNote"
             @view-notes="handleViewNotes"
+            @open-folder="openFolder"
+            @delete-folder="deleteFolder"
+            @edit-folder="openRenameFolderModal"
           />
         </div>
       </div>
