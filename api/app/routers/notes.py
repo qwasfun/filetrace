@@ -3,19 +3,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func
 from sqlalchemy.orm import selectinload
-from api.app.schemas import NoteCreate, NoteUpdate, NoteResponse
+from app.schemas import NoteCreate, NoteUpdate, NoteResponse
 from pydantic import BaseModel, Field
-from api.app.database import get_async_session
+from app.database import get_async_session
 
 
 class FileIdsRequest(BaseModel):
     file_ids: List[str]
 
 
-from api.app.models import Note, File
+from app.models import Note, File
 
-from api.app.models import User
-from api.app.services.security import get_current_user
+from app.models import User
+from app.services.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/notes", tags=["Notes"])
 

@@ -3,11 +3,11 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from api.app.database import get_async_session
+from app.database import get_async_session
 
-from api.app.models import User
-from api.app.services.security import get_password_hash, verify_password, get_current_user
-from api.app.services.jwt import create_access_token, create_refresh_token, decode_token
+from app.models import User
+from app.services.security import get_password_hash, verify_password, get_current_user
+from app.services.jwt import create_access_token, create_refresh_token, decode_token
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])

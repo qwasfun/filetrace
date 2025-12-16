@@ -3,11 +3,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
-from api.app.database import create_db_and_tables
+from app.database import create_db_and_tables
 
 from contextlib import asynccontextmanager
 
-from api.app.routers import users, auth, files, notes
+from app.routers import users, auth, files, notes
 
 
 @asynccontextmanager

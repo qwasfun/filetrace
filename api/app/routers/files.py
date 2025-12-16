@@ -3,15 +3,15 @@ from urllib.parse import quote
 from fastapi import APIRouter, UploadFile, Depends, HTTPException, File as FastAPIFile, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
-from api.app.database import get_async_session
-from api.app.models import File
-from api.app.services.security import get_current_user
-from api.app.schemas import FileResponseModel
+from app.database import get_async_session
+from app.models import File
+from app.services.security import get_current_user
+from app.schemas import FileResponseModel
 from fastapi.responses import FileResponse
-from api.app.models import User
+from app.models import User
 from datetime import datetime
-from api.app.services.storage import save_file, delete_file, file_exists, get_storage, get_public_url
-from api.app.services.storage_backend import S3StorageBackend
+from app.services.storage import save_file, delete_file, file_exists, get_storage, get_public_url
+from app.services.storage_backend import S3StorageBackend
 
 router = APIRouter(prefix="/api/v1/files", tags=["Files"])
 
