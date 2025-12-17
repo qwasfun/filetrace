@@ -157,24 +157,6 @@ async def get_file_metadata(file_id: str, db: AsyncSession = Depends(get_async_s
         raise HTTPException(status_code=404, detail="File not found")
     return file
 
-
-@router.delete("/{file_id}")
-async def delete(file_id: str, db: AsyncSession = Depends(get_async_session),
-                      current_user: User = Depends(get_current_user)):
-    result = await db.execute(select(File).where((File.id == file_id) & (File.user_id == current_user.id)))
-    file = result.scalar_one_or_none()
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-
-    # Delete from storage backend
-    delete_file(file.storage_path)
-
-    # Delete from DB
-    await db.delete(file)
-    await db.commit()
-    return {"message": "File deleted"}
-
-
 @router.get("/download/{file_id}/{filename}")
 async def download_file(
         file_id: str,
