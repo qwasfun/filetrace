@@ -1,5 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { formatDate, formatSize } from '@/utils/format'
+import { getFileIcon, getFileTypeColor } from '@/utils/file'
 
 const props = defineProps({
   files: {
@@ -81,42 +83,7 @@ const emitSelection = () => {
 const hoveredFile = ref(null)
 const hoveredFolder = ref(null)
 
-const formatSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const dateStr =
-    dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z'
-  return new Date(dateStr).toLocaleString()
-}
-
 const isImage = (mimeType) => mimeType.startsWith('image/')
-
-const getFileIcon = (mimeType) => {
-  if (mimeType.startsWith('image/')) return '🖼️'
-  if (mimeType.startsWith('video/')) return '🎥'
-  if (mimeType === 'application/pdf') return '📄'
-  if (mimeType.startsWith('audio/')) return '🎵'
-  if (mimeType.includes('document') || mimeType.includes('word')) return '📝'
-  if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📊'
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📋'
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return '🗜️'
-  return '📁'
-}
-
-const getFileTypeColor = (mimeType) => {
-  if (mimeType.startsWith('image/')) return 'bg-green-100 text-green-600'
-  if (mimeType.startsWith('video/')) return 'bg-blue-100 text-blue-600'
-  if (mimeType === 'application/pdf') return 'bg-red-100 text-red-600'
-  if (mimeType.startsWith('audio/')) return 'bg-purple-100 text-purple-600'
-  return 'bg-gray-100 text-gray-600'
-}
 </script>
 
 <template>

@@ -342,6 +342,8 @@ import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import fileService from '../../api/fileService.js'
 import noteService from '../../api/noteService.js'
+import { formatSize } from '@/utils/format'
+import { getFileIcon, getFileTypeColor } from '@/utils/file'
 
 const router = useRouter()
 
@@ -355,15 +357,6 @@ const stats = ref({
 const recentFiles = ref([])
 const recentNotes = ref([])
 
-// 格式化文件大小
-const formatSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
-
 // 格式化日期
 const formatDate = (dateString) => {
   const date = new Date(dateString)
@@ -375,25 +368,6 @@ const formatDate = (dateString) => {
   if (days === 1) return '昨天'
   if (days < 7) return `${days}天前`
   return date.toLocaleDateString()
-}
-
-// 文件图标和颜色
-const getFileIcon = (mimeType) => {
-  if (!mimeType) return '📁'
-  if (mimeType.startsWith('image/')) return '🖼️'
-  if (mimeType.startsWith('video/')) return '🎥'
-  if (mimeType === 'application/pdf') return '📄'
-  if (mimeType.startsWith('audio/')) return '🎵'
-  return '📁'
-}
-
-const getFileTypeColor = (mimeType) => {
-  if (!mimeType) return 'bg-gray-100 text-gray-600'
-  if (mimeType.startsWith('image/')) return 'bg-green-100 text-green-600'
-  if (mimeType.startsWith('video/')) return 'bg-blue-100 text-blue-600'
-  if (mimeType === 'application/pdf') return 'bg-red-100 text-red-600'
-  if (mimeType.startsWith('audio/')) return 'bg-purple-100 text-purple-600'
-  return 'bg-gray-100 text-gray-600'
 }
 
 // 导航到页面

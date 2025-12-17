@@ -212,6 +212,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import noteService from '../api/noteService.js'
+import { formatDate } from '@/utils/format'
+import { getFileIcon, getFileTypeColor } from '@/utils/file'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -225,35 +227,6 @@ const selectedNote = ref(null)
 const isEditing = ref(false)
 const editingNote = ref({ title: '', content: '', file_id: null })
 const loading = ref(false)
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const dateStr =
-    dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z'
-  return new Date(dateStr).toLocaleString()
-}
-
-const getFileIcon = (mimeType) => {
-  if (!mimeType) return '📁'
-  if (mimeType.startsWith('image/')) return '🖼️'
-  if (mimeType.startsWith('video/')) return '🎥'
-  if (mimeType === 'application/pdf') return '📄'
-  if (mimeType.startsWith('audio/')) return '🎵'
-  if (mimeType.includes('document') || mimeType.includes('word')) return '📝'
-  if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📊'
-  if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📋'
-  if (mimeType.includes('zip') || mimeType.includes('archive')) return '🗜️'
-  return '📁'
-}
-
-const getFileTypeColor = (mimeType) => {
-  if (!mimeType) return 'bg-gray-100 text-gray-600'
-  if (mimeType.startsWith('image/')) return 'bg-green-100 text-green-600'
-  if (mimeType.startsWith('video/')) return 'bg-blue-100 text-blue-600'
-  if (mimeType === 'application/pdf') return 'bg-red-100 text-red-600'
-  if (mimeType.startsWith('audio/')) return 'bg-purple-100 text-purple-600'
-  return 'bg-gray-100 text-gray-600'
-}
 
 const loadNotes = async () => {
   if (!props.file?.id) return

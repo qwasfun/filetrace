@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import noteService from '../../api/noteService.js'
 import NoteEditor from '../../components/NoteEditor.vue'
+import { formatDate } from '@/utils/format'
 
 const notes = ref([])
 const loading = ref(false)
@@ -78,13 +79,6 @@ const handleDelete = async (id) => {
   } catch (error) {
     console.error('Failed to delete note', error)
   }
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const dateStr =
-    dateString.endsWith('Z') || dateString.includes('+') ? dateString : dateString + 'Z'
-  return new Date(dateStr).toLocaleString()
 }
 
 onMounted(async () => {

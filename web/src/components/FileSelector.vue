@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import fileService from '../api/fileService'
+import { getFileIcon } from '@/utils/file'
 
 const props = defineProps({
   excludeIds: {
@@ -69,12 +70,6 @@ const handleConfirm = () => {
 }
 
 const isImage = (mimeType) => mimeType.startsWith('image/')
-const getFileIcon = (mimeType) => {
-  if (mimeType.startsWith('image/')) return '🖼️'
-  if (mimeType.startsWith('video/')) return '🎥'
-  if (mimeType === 'application/pdf') return '📄'
-  return '📁'
-}
 
 watch(searchQuery, handleSearch)
 
