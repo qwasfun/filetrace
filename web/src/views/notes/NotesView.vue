@@ -165,13 +165,10 @@ onMounted(async () => {
               <h3 class="font-bold truncate">{{ note.title || 'Untitled Note' }}</h3>
               <p class="text-xs text-base-content/60 line-clamp-2">{{ note.content }}</p>
               <div class="flex justify-between items-center mt-2">
-                <span class="text-xs text-base-content/40">{{ formatDate(note.updated_at) }}</span>
-                <button
-                  class="btn btn-error btn-xs btn-outline"
-                  @click.stop="handleDelete(note.id)"
-                >
-                  🗑️ 删除
-                </button>
+                <span class="flex-1 text-xs text-base-content/40">{{
+                  formatDate(note.updated_at)
+                }}</span>
+                <span class="badge">📁 {{ note.files.length }}</span>
               </div>
             </div>
           </div>
