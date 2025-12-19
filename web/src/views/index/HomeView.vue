@@ -5,7 +5,7 @@
       <div class="container mx-auto px-4 py-12">
         <div class="text-center">
           <h1 class="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            欢迎使用 <span class="text-blue-600">FileTrace</span>
+            欢迎使用 <span class="text-blue-600">ArchiveNote</span>
           </h1>
           <p class="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
             您的个人文件和笔记管理中心，让信息整理变得简单而高效
@@ -255,7 +255,7 @@
         <div class="text-center mb-12">
           <h2 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4">强大的功能特点</h2>
           <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            FileTrace 提供完整的文件和笔记管理解决方案，让您的工作更有条理
+            ArchiveNote 提供完整的文件和笔记管理解决方案，让您的工作更有条理
           </p>
         </div>
 

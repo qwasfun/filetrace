@@ -19,7 +19,7 @@
                 ></path>
               </svg>
             </div>
-            <span class="text-xl font-bold text-gray-900 dark:text-gray-100">FileTrace</span>
+            <span class="text-xl font-bold text-gray-900 dark:text-gray-100">ArchiveNote</span>
           </RouterLink>
 
           <!-- 主导航 -->
