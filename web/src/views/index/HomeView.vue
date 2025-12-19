@@ -342,6 +342,7 @@ import { ref, onMounted } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import fileService from '../../api/fileService.js'
 import noteService from '../../api/noteService.js'
+import statsService from '../../api/statsService.js'
 import { formatSize } from '@/utils/format'
 import { getFileIcon, getFileTypeColor } from '@/utils/file'
 
@@ -377,37 +378,31 @@ const goToNotes = () => router.push('/notes')
 // 加载数据
 const loadData = async () => {
   try {
-    // 加载文件统计
+    // 加载统计数据
+    const statsData = await statsService.getStats()
+    stats.value.totalFiles = statsData.file_count
+    stats.value.totalSize = statsData.storage_usage
+    stats.value.totalNotes = statsData.note_count
+    stats.value.todayActivity = statsData.today_activity
+
+    // 加载文件列表用于展示最近文件
     const filesResponse = await fileService.getFiles()
     const files = filesResponse.data || []
-    stats.value.totalFiles = files.length
-    stats.value.totalSize = files.reduce((sum, file) => sum + (file.size || 0), 0)
 
     // 最近文件（最多5个）
     recentFiles.value = files
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 5)
 
-    // 加载笔记统计
+    // 加载笔记列表用于展示最近笔记
     const notesResponse = await noteService.getNotes()
     const notes = notesResponse.data || []
-    stats.value.totalNotes = notes.length
 
     // 最近笔记（最多5个）
     recentNotes.value = notes
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
       .slice(0, 5)
 
-    // 今日活动计算（简化版）
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    const todayFiles = files.filter((file) => new Date(file.created_at) >= today)
-    const todayNotes = notes.filter(
-      (note) => new Date(note.created_at) >= today || new Date(note.updated_at) >= today,
-    )
-
-    stats.value.todayActivity = todayFiles.length + todayNotes.length
   } catch (error) {
     console.error('Failed to load dashboard data', error)
   }
