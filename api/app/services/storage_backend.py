@@ -172,11 +172,11 @@ class S3StorageBackend(StorageBackend):
         
         # 创建 S3 配置
         # 禁用分块传输以兼容更多 S3 服务（如阿里云 OSS）
+        # https://help.aliyun.com/zh/oss/developer-reference/use-aws-sdks-to-access-oss
         config = boto3.session.Config(
-            signature_version='s3v4',
+            signature_version='s3',
             s3={
-                'addressing_style': 'virtual',
-                'payload_signing_enabled': False  # 禁用负载签名，避免 chunked 编码问题
+                'addressing_style': 'virtual'
             }
         )
         
@@ -342,11 +342,12 @@ class S3StorageBackend(StorageBackend):
                 's3',
                 aws_access_key_id=self.s3_client._request_signer._credentials.access_key,
                 aws_secret_access_key=self.s3_client._request_signer._credentials.secret_key,
-                endpoint_url=f"https://{self.public_url}" if not self.public_url.startswith('http') else self.public_url,
+                endpoint_url=f"https://{self.public_url}" if not self.public_url.startswith(
+                    'http') else self.public_url,
                 region_name=self.region_name,
                 config=boto3.session.Config(
-                    signature_version='s3v4',
-                    s3={'addressing_style': 'virtual', 'payload_signing_enabled': False}
+                    signature_version='s3',
+                    s3={'addressing_style': 'virtual'}
                 )
             )
             try:
