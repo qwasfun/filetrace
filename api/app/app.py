@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import asyncio
 
-from app.database import create_db_and_tables
+from app.database import run_migrations
 
 from contextlib import asynccontextmanager
 
@@ -12,7 +13,8 @@ from app.routers import users, auth, files, notes, folders, recycle, stats
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await create_db_and_tables()
+    # Run migrations on startup
+    await asyncio.to_thread(run_migrations)
     yield
 
 

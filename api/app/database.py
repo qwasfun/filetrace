@@ -10,6 +10,10 @@ from sqlalchemy.orm import declarative_base
 from collections.abc import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 
+from alembic.config import Config
+from alembic import command
+import logging
+
 load_dotenv()
 
 # 默认使用异步 sqlite 驱动 aiosqlite
@@ -47,3 +51,33 @@ async def create_db_and_tables():
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         yield session
+
+
+logger = logging.getLogger(__name__)
+
+
+def run_migrations():
+    try:
+        logger.info("Running database migrations...")
+        # Assuming alembic.ini is in the current working directory or parent directory
+        # We can try to locate it
+        alembic_ini_path = "alembic.ini"
+        if not os.path.exists(alembic_ini_path):
+            # Try looking one level up if we are running from app/
+            alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "alembic.ini")
+
+        if not os.path.exists(alembic_ini_path):
+            logger.warning("alembic.ini not found, skipping migrations.")
+            return
+
+        alembic_cfg = Config(alembic_ini_path)
+        # Ensure script_location is absolute or correct relative to CWD
+        # If alembic.ini has script_location = alembic, it expects alembic folder in CWD.
+        # If we are in api/, it works.
+
+        command.upgrade(alembic_cfg, "head")
+        logger.info("Database migrations completed.")
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+        # Re-raise to fail startup if migration fails
+        raise e
