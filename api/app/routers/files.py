@@ -22,13 +22,24 @@ UPLOAD_DIR = "data/uploads"
 async def upload_files(
         folder_id: Optional[str] = Query(None),
         files: List[UploadFile] = FastAPIFile(...),
+        original_created_at: Optional[List[datetime]] = Query(None),
+        original_updated_at: Optional[List[datetime]] = Query(None),
         db: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(get_current_user)
 ):
     results = []
-    for file in files:
+    for i, file in enumerate(files):
         # 保存文件（传递 user_id 用于组织文件结构）
         storage_path, mime_type, size = save_file(file, str(current_user.id))
+
+        # Determine timestamps
+        created_at = datetime.utcnow()
+        if original_created_at and i < len(original_created_at) and original_created_at[i]:
+            created_at = original_created_at[i]
+
+        updated_at = datetime.utcnow()
+        if original_updated_at and i < len(original_updated_at) and original_updated_at[i]:
+            updated_at = original_updated_at[i]
 
         # Save to DB
         new_file = File(
@@ -38,7 +49,8 @@ async def upload_files(
             storage_path=storage_path,
             mime_type=mime_type,
             size=size,
-            created_at=datetime.utcnow()
+            original_created_at=created_at,
+            original_updated_at=updated_at,
         )
         db.add(new_file)
         results.append(new_file)
@@ -141,7 +153,9 @@ async def list_files(
                 "download_url": f.download_url,
                 "notes_count": f.notes_count,
                 "mime_type": f.mime_type,
-                "created_at": f.created_at
+                "created_at": f.created_at,
+                "original_created_at":f.original_created_at,
+                "original_updated_at":f.original_updated_at,
             }
             for f in files
         ]

@@ -28,7 +28,10 @@ class FileResponseModel(BaseModel):
     storage_path: str
     mime_type: str
     size: int
+    original_created_at : datetime | None = None
+    original_updated_at : datetime | None = None
     created_at: datetime
+    updated_at: datetime | None = None
     is_deleted: bool | int = False
     deleted_at: datetime | None = None
     notes_count: int = 0

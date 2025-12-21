@@ -53,7 +53,10 @@ class File(Base):
     storage_path: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
     size: Mapped[int] = mapped_column(Integer, default=0)
+    original_created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    original_updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_deleted: Mapped[bool] = mapped_column(Integer, default=0)
     deleted_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
 
