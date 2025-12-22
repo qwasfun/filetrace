@@ -170,6 +170,7 @@ async def list_files(
                 "size": f.size,
                 "storage_path": f.storage_path,
                 "download_url": f.download_url,
+                "preview_url": f.preview_url,
                 "notes_count": f.notes_count,
                 "mime_type": f.mime_type,
                 "created_at": f.created_at,
@@ -221,7 +222,7 @@ async def download_file(
     if isinstance(storage, S3StorageBackend):
         # S3 存储：重定向到预签名 URL
         try:
-            url = storage.get_public_url(storage_path, filename=file_record.filename)
+            url = storage.get_public_url(storage_path, filename=file_record.filename, disposition='attachment')
             return RedirectResponse(url=url)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"获取 S3 下载链接失败: {str(e)}")
@@ -230,20 +231,58 @@ async def download_file(
         # 对文件名进行URL编码以支持中文等非ASCII字符
         encoded_filename = quote(file_record.filename)
 
-        # 如果是PDF文件,使用inline方式在浏览器中显示
-        if file_record.mime_type == "application/pdf":
-            return FileResponse(
-                path=storage_path,
-                filename=file_record.filename,
-                media_type=file_record.mime_type,
-                headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"}
-            )
-        
         return FileResponse(
             path=storage_path,
             filename=file_record.filename,
             media_type=file_record.mime_type,
             headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+        )
+
+
+@router.get("/preview/{file_id}/{filename}")
+async def preview_file(
+        file_id: str,
+        filename: Optional[str] = None,
+        session: AsyncSession = Depends(get_async_session),
+):
+    """预览文件"""
+
+    # 查询文件
+    stmt = select(File).where(
+        (File.id == file_id)
+    )
+    result = await session.execute(stmt)
+    file_record = result.scalar_one_or_none()
+
+    if not file_record:
+        raise HTTPException(status_code=404, detail="文件不存在或无权限访问")
+
+    # 检查文件是否存在
+    storage_path = file_record.storage_path
+    if not file_exists(storage_path):
+        raise HTTPException(status_code=404, detail="文件在存储中不存在")
+
+    # 获取存储后端实例
+    storage = get_storage()
+    
+    # 检查是否为 S3 存储
+    if isinstance(storage, S3StorageBackend):
+        # S3 存储：重定向到预签名 URL
+        try:
+            url = storage.get_public_url(storage_path, filename=file_record.filename, disposition='inline')
+            return RedirectResponse(url=url)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"获取 S3 预览链接失败: {str(e)}")
+    else:
+        # 本地存储：使用 FileResponse
+        # 对文件名进行URL编码以支持中文等非ASCII字符
+        encoded_filename = quote(file_record.filename)
+
+        return FileResponse(
+            path=storage_path,
+            filename=file_record.filename,
+            media_type=file_record.mime_type,
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"}
         )
 
 
