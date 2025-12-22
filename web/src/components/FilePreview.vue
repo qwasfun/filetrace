@@ -72,7 +72,7 @@
           class="flex items-center justify-center p-6 bg-gray-50 dark:bg-gray-800 h-full"
         >
           <img
-            :src="`${file.download_url}`"
+            :src="`${file.preview_url}`"
             :alt="file.filename"
             class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
           />
@@ -84,7 +84,7 @@
           class="flex items-center justify-center p-6 bg-black h-full"
         >
           <video
-            :src="`${file.download_url}`"
+            :src="`${file.preview_url}`"
             controls
             class="max-w-full max-h-full rounded-lg shadow-lg"
           >
@@ -95,7 +95,7 @@
         <!-- PDF预览 -->
         <div v-else-if="isPdf(file.mime_type)" class="h-full">
           <iframe
-            :src="`${file.download_url}#view=FitH`"
+            :src="`${file.preview_url}#view=FitH`"
             class="w-full h-full border-0"
             title="PDF预览"
           ></iframe>
@@ -112,7 +112,7 @@
               </div>
               <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ file.filename }}</h3>
             </div>
-            <audio :src="`${file.download_url}`" controls class="w-full">
+            <audio :src="`${file.preview_url}`" controls class="w-full">
               您的浏览器不支持音频播放
             </audio>
           </div>
@@ -193,7 +193,7 @@ const loadTextContent = async () => {
   if (!props.file || !isText(props.file.mime_type)) return
 
   try {
-    const response = await fetch(`${props.file.download_url}`)
+    const response = await fetch(`${props.file.preview_url}`)
     const text = await response.text()
     textContent.value =
       text.length > 10000 ? text.substring(0, 10000) + '\n...(文件内容过长，已截断)' : text

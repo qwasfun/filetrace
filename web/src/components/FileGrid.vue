@@ -203,7 +203,7 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
             <!-- 图片预览 -->
             <img
               v-if="isImage(file.mime_type)"
-              :src="`${file.download_url}`"
+              :src="`${file.preview_url}`"
               :alt="file.filename"
               class="w-full h-full object-cover"
             />

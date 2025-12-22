@@ -122,7 +122,7 @@ onMounted(() => {
           <figure class="h-20 flex items-center justify-center bg-base-300 overflow-hidden">
             <img
               v-if="isImage(file.mime_type)"
-              :src="`${file.download_url}`"
+              :src="`${file.preview_url}`"
               class="w-full h-full object-cover opacity-80"
             />
             <span v-else class="text-3xl">{{ getFileIcon(file.mime_type) }}</span>
