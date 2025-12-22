@@ -7,6 +7,7 @@ from typing import Tuple, BinaryIO
 import os
 import shutil
 import mimetypes
+import shortuuid
 from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
@@ -89,18 +90,18 @@ class LocalStorageBackend(StorageBackend):
         # 生成日期和时间
         now = datetime.now()
         date_dir = now.strftime("%Y%m%d")
-        time_prefix = now.strftime("%H%M%S")
         
-        # 构建路径：userid/日期/时间-文件名
+        # 构建路径：userid/日期/uuid.ext
         if user_id:
             target_dir = os.path.join(self.base_dir, user_id, date_dir)
         else:
             target_dir = os.path.join(self.base_dir, "anonymous", date_dir)
         os.makedirs(target_dir, exist_ok=True)
         
-        # 文件名添加时间前缀
-        filename_with_time = f"{time_prefix}-{file.filename}"
-        filepath = os.path.join(target_dir, filename_with_time)
+        # 使用 UUID 生成文件名
+        file_ext = os.path.splitext(file.filename)[1]
+        new_filename = f"{shortuuid.uuid()}{file_ext}"
+        filepath = os.path.join(target_dir, new_filename)
         
         # 保存文件
         with open(filepath, "wb") as buffer:
@@ -234,7 +235,7 @@ class S3StorageBackend(StorageBackend):
     def _generate_s3_key(self, filename: str, user_id: str = None) -> str:
         """
         生成 S3 对象键
-        格式：userid/日期/时间-文件名
+        格式：userid/日期/uuid.ext
         
         Args:
             filename: 文件名
@@ -245,12 +246,13 @@ class S3StorageBackend(StorageBackend):
         """
         now = datetime.now()
         date_str = now.strftime("%Y%m%d")
-        time_prefix = now.strftime("%H%M%S")
-        filename_with_time = f"{time_prefix}-{filename}"
+        
+        file_ext = os.path.splitext(filename)[1]
+        new_filename = f"{shortuuid.uuid()}{file_ext}"
         
         if user_id:
-            return f"{user_id}/{date_str}/{filename_with_time}"
-        return f"anonymous/{date_str}/{filename_with_time}"
+            return f"{user_id}/{date_str}/{new_filename}"
+        return f"anonymous/{date_str}/{new_filename}"
     
     def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
         """保存文件到 S3"""
