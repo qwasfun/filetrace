@@ -345,6 +345,7 @@ import noteService from '../../api/noteService.js'
 import statsService from '../../api/statsService.js'
 import { formatSize } from '@/utils/format'
 import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import { useAuthStore } from '@/stores/auth.js'
 
 const router = useRouter()
 
@@ -407,7 +408,11 @@ const loadData = async () => {
   }
 }
 
+const { isAuthenticated } = useAuthStore
+
 onMounted(() => {
-  loadData()
+  if (isAuthenticated) {
+    loadData()
+  }
 })
 </script>
