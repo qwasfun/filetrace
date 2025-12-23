@@ -284,6 +284,7 @@
 import { ref, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { logout } from '@/api/authService'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -300,10 +301,11 @@ const handleSearch = () => {
   }
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
   // 使用 auth store 清除认证信息
   authStore.clearAuth()
   showMobileMenu.value = false
+  await logout()
   router.push('/auth/login')
 }
 </script>
