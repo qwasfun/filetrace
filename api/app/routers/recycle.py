@@ -2,6 +2,7 @@ from typing import List, Union
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from sqlalchemy import inspect as sqlalchemy_inspect
 from app.database import get_async_session
 from app.models import File, Folder, User
 from app.schemas import FileResponseModel, FolderResponse
@@ -86,17 +87,26 @@ async def permanent_delete_items(
         result = await db.execute(stmt)
         files = result.scalars().all()
         for file in files:
-            await db.delete(file)
-            # Physical delete
-            try:
-                delete_file_storage(file.storage_path)
-            except Exception as e:
-                print(f"Error deleting file {file.id}: {e}")
+            if file in db:
+                await db.delete(file)
+                # Physical delete
+                try:
+                    delete_file_storage(file.storage_path)
+                except Exception as e:
+                    print(f"Error deleting file {file.id}: {e}")
+        
+        # Flush file deletes
+        if files:
+            await db.flush()
 
     # Delete folders (recursive)
     if request.folder_ids:
         # Helper for recursive delete
         async def delete_folder_recursive(folder_to_delete: Folder):
+            # Check if object is in valid state before proceeding
+            if folder_to_delete not in db:
+                return
+                
             # Find and delete all child folders
             child_folders_stmt = select(Folder).where(Folder.parent_id == folder_to_delete.id)
             child_folders_result = await db.execute(child_folders_stmt)
@@ -105,19 +115,28 @@ async def permanent_delete_items(
             for child_folder in child_folders:
                 await delete_folder_recursive(child_folder)
             
+            # Flush to ensure child deletes are processed
+            await db.flush()
+            
             # Delete all files in this folder
             files_stmt = select(File).where(File.folder_id == folder_to_delete.id)
             files_result = await db.execute(files_stmt)
             files = files_result.scalars().all()
             
             for file in files:
-                await db.delete(file)
-                try:
-                    delete_file_storage(file.storage_path)
-                except Exception as e:
-                    print(f"Error deleting file {file.id}: {e}")
+                if file in db:
+                    await db.delete(file)
+                    try:
+                        delete_file_storage(file.storage_path)
+                    except Exception as e:
+                        print(f"Error deleting file {file.id}: {e}")
             
-            await db.delete(folder_to_delete)
+            # Flush file deletes before deleting folder
+            await db.flush()
+            
+            # Check again before deleting the folder itself
+            if folder_to_delete in db:
+                await db.delete(folder_to_delete)
 
         stmt = select(Folder).where(Folder.id.in_(request.folder_ids), Folder.user_id == current_user.id)
         result = await db.execute(stmt)
