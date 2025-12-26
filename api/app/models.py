@@ -76,7 +76,11 @@ class File(Base):
 
     @property
     def download_url(self) -> str:
-        return get_public_url(self.storage_path) or f"/api/v1/files/download/{self.id}/{self.filename}"
+        return f"/api/v1/files/download/{self.id}/{self.filename}"
+
+    @property
+    def preview_url(self) -> str:
+        return f"/api/v1/files/preview/{self.id}/{self.filename}"
 
 
 class Note(Base):

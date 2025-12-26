@@ -345,6 +345,7 @@ import noteService from '../../api/noteService.js'
 import statsService from '../../api/statsService.js'
 import { formatSize } from '@/utils/format'
 import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import { useAuthStore } from '@/stores/auth.js'
 
 const router = useRouter()
 
@@ -402,13 +403,16 @@ const loadData = async () => {
     recentNotes.value = notes
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
       .slice(0, 5)
-
   } catch (error) {
     console.error('Failed to load dashboard data', error)
   }
 }
 
+const { isAuthenticated } = useAuthStore()
+
 onMounted(() => {
-  loadData()
+  if (isAuthenticated) {
+    loadData()
+  }
 })
 </script>

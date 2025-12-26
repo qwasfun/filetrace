@@ -88,30 +88,34 @@ def file_exists(storage_path: str) -> bool:
     return storage.exists(storage_path)
 
 
-def get_download_info(storage_path: str) -> dict:
+def get_download_info(storage_path: str, filename: str = None, disposition: str = 'attachment') -> dict:
     """
     获取文件下载信息
     
     Args:
         storage_path: 文件存储路径
+        filename: 文件名（可选）
+        disposition: Content-Disposition 类型 (attachment 或 inline)
         
     Returns:
         包含下载所需信息的字典
     """
     storage = get_storage()
-    return storage.get_download_info(storage_path)
+    return storage.get_download_info(storage_path, filename, disposition)
 
 
-def get_public_url(storage_path: str) -> str:
+def get_public_url(storage_path: str, filename: str = None, disposition: str = 'attachment') -> str:
     """
     获取文件的公共 URL（签名后）
     
     Args:
         storage_path: 文件存储路径
+        filename: 文件名（可选，用于设置 Content-Disposition）
+        disposition: Content-Disposition 类型 (attachment 或 inline)
         
     Returns:
         公共 URL 或 None
     """
     storage = get_storage()
-    return storage.get_public_url(storage_path)
+    return storage.get_public_url(storage_path, filename, disposition)
 

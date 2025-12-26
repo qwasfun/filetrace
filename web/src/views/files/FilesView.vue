@@ -15,9 +15,12 @@ const loading = ref(false)
 const showUploadModal = ref(false)
 const showCreateFolderModal = ref(false)
 const showRenameFolderModal = ref(false)
+const showRenameFileModal = ref(false)
 const editingFolder = ref(null)
+const editingFile = ref(null)
 const newFolderName = ref('')
 const renameFolderName = ref('')
+const renameFileName = ref('')
 const previewFile = ref(null)
 const notesFile = ref(null)
 const showNotes = ref(false)
@@ -34,7 +37,9 @@ const selectedFolders = ref([])
 const isSelectionMode = ref(false)
 const showBatchMoveModal = ref(false)
 const moveTargetFolderId = ref(null)
-const allFolders = ref([])
+const moveBreadcrumbs = ref([])
+const moveFolders = ref([])
+const moveLoading = ref(false)
 
 const toggleSelectionMode = () => {
   isSelectionMode.value = !isSelectionMode.value
@@ -71,24 +76,40 @@ const batchDelete = async () => {
   }
 }
 
-const openBatchMoveModal = async () => {
+const loadMoveFolders = async () => {
+  moveLoading.value = true
   try {
-    // Ideally we should fetch a tree or all folders.
-    // For now, let's just fetch root folders or current level?
-    // A proper folder selector is complex.
-    // Let's just fetch all folders for now (might be heavy if many folders)
-    // Or just fetch root and allow navigation?
-    // Let's stick to a simple flat list of all folders for MVP if possible, or just root.
-    // Actually, getFolders takes parent_id. If we want all, we might need a new endpoint or recursive fetch.
-    // Let's just show root folders for now and maybe allow drilling down later?
-    // Or just use a text input for folder ID for now? No that's bad UX.
-    // Let's fetch root folders.
-    const res = await folderService.getFolders({})
-    allFolders.value = res
-    showBatchMoveModal.value = true
+    const params = {}
+    if (moveTargetFolderId.value) {
+      params.parent_id = moveTargetFolderId.value
+    }
+    const res = await folderService.getFolders(params)
+    moveFolders.value = res
   } catch (e) {
     console.error(e)
+  } finally {
+    moveLoading.value = false
   }
+}
+
+const openBatchMoveModal = async () => {
+  moveTargetFolderId.value = null
+  moveBreadcrumbs.value = [{ id: null, name: '根目录' }]
+  await loadMoveFolders()
+  showBatchMoveModal.value = true
+}
+
+const enterMoveFolder = async (folder) => {
+  moveTargetFolderId.value = folder.id
+  moveBreadcrumbs.value.push({ id: folder.id, name: folder.name })
+  await loadMoveFolders()
+}
+
+const navigateMoveBreadcrumb = async (index) => {
+  const target = moveBreadcrumbs.value[index]
+  moveTargetFolderId.value = target.id
+  moveBreadcrumbs.value = moveBreadcrumbs.value.slice(0, index + 1)
+  await loadMoveFolders()
 }
 
 const confirmBatchMove = async () => {
@@ -112,6 +133,25 @@ const confirmBatchMove = async () => {
     isSelectionMode.value = false
   } catch (error) {
     console.error('Batch move failed', error)
+  }
+}
+
+const handleRenameFile = (file) => {
+  editingFile.value = file
+  renameFileName.value = file.filename
+  showRenameFileModal.value = true
+}
+
+const confirmRenameFile = async () => {
+  if (!renameFileName.value) return
+  try {
+    await fileService.renameFile(editingFile.value.id, { filename: renameFileName.value })
+    showRenameFileModal.value = false
+    editingFile.value = null
+    renameFileName.value = ''
+    await loadData()
+  } catch (error) {
+    console.error('Rename file failed', error)
   }
 }
 
@@ -379,6 +419,28 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Rename File Modal -->
+      <div
+        v-if="showRenameFileModal"
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      >
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 shadow-xl">
+          <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">重命名文件</h3>
+          <input
+            v-model="renameFileName"
+            type="text"
+            placeholder="File Name"
+            class="input input-bordered w-full mb-4"
+            @keyup.enter="confirmRenameFile"
+            autoFocus
+          />
+          <div class="flex justify-end gap-2">
+            <button @click="showRenameFileModal = false" class="btn btn-ghost">取消</button>
+            <button @click="confirmRenameFile" class="btn btn-primary">保存</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Create Folder Modal -->
       <div
         v-if="showCreateFolderModal"
@@ -527,6 +589,7 @@ onMounted(() => {
             @open-folder="openFolder"
             @delete-folder="deleteFolder"
             @edit-folder="openRenameFolderModal"
+            @rename-file="handleRenameFile"
           />
 
           <!-- Pagination -->
@@ -569,17 +632,78 @@ onMounted(() => {
       v-if="showBatchMoveModal"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     >
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 shadow-xl">
+      <div
+        class="bg-white dark:bg-gray-800 rounded-lg p-6 w-[32rem] shadow-xl flex flex-col max-h-[80vh]"
+      >
         <h3 class="text-lg font-bold mb-4 text-gray-900 dark:text-gray-100">移动到...</h3>
-        <select v-model="moveTargetFolderId" class="select select-bordered w-full mb-4">
-          <option :value="null">根目录</option>
-          <option v-for="folder in allFolders" :key="folder.id" :value="folder.id">
-            {{ folder.name }}
-          </option>
-        </select>
-        <div class="flex justify-end gap-2">
-          <button @click="showBatchMoveModal = false" class="btn btn-ghost">取消</button>
-          <button @click="confirmBatchMove" class="btn btn-primary">移动</button>
+
+        <!-- Breadcrumbs -->
+        <div class="text-sm breadcrumbs mb-2 px-1">
+          <ul>
+            <li v-for="(crumb, index) in moveBreadcrumbs" :key="crumb.id">
+              <a
+                @click="navigateMoveBreadcrumb(index)"
+                :class="{ 'font-bold': index === moveBreadcrumbs.length - 1 }"
+              >
+                {{ crumb.name }}
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Folder List -->
+        <div
+          class="flex-1 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg mb-4 min-h-[200px]"
+        >
+          <div v-if="moveLoading" class="flex justify-center p-4">
+            <span class="loading loading-spinner loading-sm"></span>
+          </div>
+          <div v-else-if="moveFolders.length === 0" class="p-4 text-center text-gray-500">
+            无子文件夹
+          </div>
+          <ul v-else class="menu w-full p-0">
+            <li v-for="folder in moveFolders" :key="folder.id">
+              <a @click="enterMoveFolder(folder)" class="flex justify-between">
+                <span class="flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-5 w-5 text-yellow-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+                    />
+                  </svg>
+                  {{ folder.name }}
+                </span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-4 w-4 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <div class="text-sm text-gray-500">
+            移动到: {{ moveBreadcrumbs[moveBreadcrumbs.length - 1]?.name }}
+          </div>
+          <div class="flex gap-2">
+            <button @click="showBatchMoveModal = false" class="btn btn-ghost">取消</button>
+            <button @click="confirmBatchMove" class="btn btn-primary">移动到此处</button>
+          </div>
         </div>
       </div>
     </div>

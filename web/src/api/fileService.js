@@ -18,6 +18,9 @@ export default {
   moveFile(id, data) {
     return service.put(`/v1/files/${id}/move`, data)
   },
+  renameFile(id, data) {
+    return service.put(`/v1/files/${id}/rename`, data)
+  },
   batchMoveFiles(data) {
     return service.post('/v1/files/batch/move', data)
   },

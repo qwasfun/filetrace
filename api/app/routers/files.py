@@ -1,27 +1,82 @@
 from typing import List, Optional
 from urllib.parse import quote
-from fastapi import APIRouter, UploadFile, Depends, HTTPException, File as FastAPIFile, Query
+from fastapi import APIRouter, UploadFile, Depends, HTTPException, File as FastAPIFile, Query, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from app.database import get_async_session
 from app.models import File, Folder
 from app.services.security import get_current_user
-from app.schemas import FileResponseModel, FileMove, BatchFileMove, BatchFileOperation
-from fastapi.responses import FileResponse
+from app.schemas import FileResponseModel, FileMove, FileRename, BatchFileMove, BatchFileOperation
+from fastapi.responses import FileResponse, RedirectResponse
 from app.models import User
 from datetime import datetime
 from app.services.storage import save_file, delete_file, file_exists, get_storage, get_public_url
 from app.services.storage_backend import S3StorageBackend
+import os
 
 router = APIRouter(prefix="/api/v1/files", tags=["Files"])
 
 UPLOAD_DIR = "data/uploads"
 
 
+async def get_or_create_folder_by_path(
+    db: AsyncSession,
+    user_id: str,
+    parent_folder_id: Optional[str],
+    folder_path: str
+) -> Optional[str]:
+    """
+    根据路径创建或获取文件夹，返回最终文件夹的ID
+    folder_path: 相对路径，如 "folder1/folder2"
+    """
+    if not folder_path:
+        return parent_folder_id
+    
+    # 分割路径
+    path_parts = folder_path.split('/')
+    current_parent_id = parent_folder_id
+    
+    for folder_name in path_parts:
+        if not folder_name:
+            continue
+            
+        # 查找是否已存在该文件夹
+        stmt = select(Folder).where(
+            Folder.user_id == user_id,
+            Folder.name == folder_name,
+            Folder.is_deleted == 0
+        )
+        
+        if current_parent_id is not None:
+            stmt = stmt.where(Folder.parent_id == current_parent_id)
+        else:
+            stmt = stmt.where(Folder.parent_id.is_(None))
+        
+        result = await db.execute(stmt)
+        folder = result.scalar_one_or_none()
+        
+        if not folder:
+            # 创建新文件夹
+            folder = Folder(
+                user_id=user_id,
+                parent_id=current_parent_id,
+                name=folder_name,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            db.add(folder)
+            await db.flush()  # 立即获取ID
+        
+        current_parent_id = folder.id
+    
+    return current_parent_id
+
+
 @router.post("/", response_model=List[FileResponseModel])
 async def upload_files(
         folder_id: Optional[str] = Query(None),
         files: List[UploadFile] = FastAPIFile(...),
+        relative_paths: Optional[List[str]] = Form(None),
         original_created_at: Optional[List[datetime]] = Query(None),
         original_updated_at: Optional[List[datetime]] = Query(None),
         db: AsyncSession = Depends(get_async_session),
@@ -29,6 +84,26 @@ async def upload_files(
 ):
     results = []
     for i, file in enumerate(files):
+        # 获取相对路径
+        relative_path = ""
+        if relative_paths and i < len(relative_paths):
+            relative_path = relative_paths[i]
+        
+        # 解析文件夹路径和文件名
+        target_folder_id = folder_id
+        actual_filename = file.filename  # 默认使用原始文件名
+        
+        if relative_path:
+            # 从相对路径中提取目录部分和文件名
+            dir_path = os.path.dirname(relative_path)
+            actual_filename = os.path.basename(relative_path)  # 提取纯文件名
+            
+            if dir_path:
+                # 创建或获取文件夹结构
+                target_folder_id = await get_or_create_folder_by_path(
+                    db, str(current_user.id), folder_id, dir_path
+                )
+        
         # 保存文件（传递 user_id 用于组织文件结构）
         storage_path, mime_type, size = save_file(file, str(current_user.id))
 
@@ -36,16 +111,24 @@ async def upload_files(
         created_at = datetime.utcnow()
         if original_created_at and i < len(original_created_at) and original_created_at[i]:
             created_at = original_created_at[i]
+            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+            if created_at.tzinfo is not None:
+                created_at = created_at.utctimetuple()
+                created_at = datetime(*created_at[:6])
 
         updated_at = datetime.utcnow()
         if original_updated_at and i < len(original_updated_at) and original_updated_at[i]:
             updated_at = original_updated_at[i]
+            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+            if updated_at.tzinfo is not None:
+                updated_at = updated_at.utctimetuple()
+                updated_at = datetime(*updated_at[:6])
 
         # Save to DB
         new_file = File(
             user_id=current_user.id,
-            folder_id=folder_id,
-            filename=file.filename,
+            folder_id=target_folder_id,
+            filename=actual_filename,  # 使用提取的纯文件名
             storage_path=storage_path,
             mime_type=mime_type,
             size=size,
@@ -54,8 +137,6 @@ async def upload_files(
         )
         db.add(new_file)
         results.append(new_file)
-        # Flush to get ID if needed immediately, but we commit at the end of loop or batched?
-        # Actually commit each for safety in MVP or gathered. Let's add to session.
 
     await db.commit()
     for result in results:
@@ -83,6 +164,25 @@ async def move_file(
             raise HTTPException(status_code=400, detail="Target folder not found")
 
     file.folder_id = file_move.folder_id
+    await db.commit()
+    await db.refresh(file)
+    return file
+
+
+@router.put("/{file_id}/rename", response_model=FileResponseModel)
+async def rename_file(
+    file_id: str,
+    file_rename: FileRename,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user)
+):
+    stmt = select(File).where(File.id == file_id, File.user_id == current_user.id)
+    result = await db.execute(stmt)
+    file = result.scalar_one_or_none()
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    file.filename = file_rename.filename
     await db.commit()
     await db.refresh(file)
     return file
@@ -151,6 +251,7 @@ async def list_files(
                 "size": f.size,
                 "storage_path": f.storage_path,
                 "download_url": f.download_url,
+                "preview_url": f.preview_url,
                 "notes_count": f.notes_count,
                 "mime_type": f.mime_type,
                 "created_at": f.created_at,
@@ -200,48 +301,69 @@ async def download_file(
     
     # 检查是否为 S3 存储
     if isinstance(storage, S3StorageBackend):
-        # S3 存储：返回文件内容
+        # S3 存储：重定向到预签名 URL
         try:
-            file_content = storage.get_object(storage_path)
-            
-            # 对文件名进行URL编码以支持中文等非ASCII字符
-            encoded_filename = quote(file_record.filename)
-            
-            # 如果是PDF文件，使用inline方式在浏览器中显示
-            if file_record.mime_type == "application/pdf":
-                from fastapi.responses import Response
-                return Response(
-                    content=file_content,
-                    media_type=file_record.mime_type,
-                    headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"}
-                )
-            
-            # 其他文件类型
-            from fastapi.responses import Response
-            return Response(
-                content=file_content,
-                media_type=file_record.mime_type,
-                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
-            )
+            url = storage.get_public_url(storage_path, filename=file_record.filename, disposition='attachment')
+            return RedirectResponse(url=url)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"从 S3 获取文件失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"获取 S3 下载链接失败: {str(e)}")
     else:
         # 本地存储：使用 FileResponse
-        # 如果是PDF文件,使用inline方式在浏览器中显示
-        if file_record.mime_type == "application/pdf":
-            # 对文件名进行URL编码以支持中文等非ASCII字符
-            encoded_filename = quote(file_record.filename)
-            return FileResponse(
-                path=storage_path,
-                filename=file_record.filename,
-                media_type=file_record.mime_type,
-                headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"}
-            )
-        
+        # 对文件名进行URL编码以支持中文等非ASCII字符
+        encoded_filename = quote(file_record.filename)
+
         return FileResponse(
             path=storage_path,
             filename=file_record.filename,
-            media_type=file_record.mime_type
+            media_type=file_record.mime_type,
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+        )
+
+
+@router.get("/preview/{file_id}/{filename}")
+async def preview_file(
+        file_id: str,
+        filename: Optional[str] = None,
+        session: AsyncSession = Depends(get_async_session),
+):
+    """预览文件"""
+
+    # 查询文件
+    stmt = select(File).where(
+        (File.id == file_id)
+    )
+    result = await session.execute(stmt)
+    file_record = result.scalar_one_or_none()
+
+    if not file_record:
+        raise HTTPException(status_code=404, detail="文件不存在或无权限访问")
+
+    # 检查文件是否存在
+    storage_path = file_record.storage_path
+    if not file_exists(storage_path):
+        raise HTTPException(status_code=404, detail="文件在存储中不存在")
+
+    # 获取存储后端实例
+    storage = get_storage()
+    
+    # 检查是否为 S3 存储
+    if isinstance(storage, S3StorageBackend):
+        # S3 存储：重定向到预签名 URL
+        try:
+            url = storage.get_public_url(storage_path, filename=file_record.filename, disposition='inline')
+            return RedirectResponse(url=url)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"获取 S3 预览链接失败: {str(e)}")
+    else:
+        # 本地存储：使用 FileResponse
+        # 对文件名进行URL编码以支持中文等非ASCII字符
+        encoded_filename = quote(file_record.filename)
+
+        return FileResponse(
+            path=storage_path,
+            filename=file_record.filename,
+            media_type=file_record.mime_type,
+            headers={"Content-Disposition": f"inline; filename*=UTF-8''{encoded_filename}"}
         )
 
 

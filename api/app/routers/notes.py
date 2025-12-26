@@ -91,6 +91,7 @@ async def list_notes(
                         "size": f.size,
                         "storage_path": f.storage_path,
                         "download_url": f.download_url,
+                        "preview_url": f.preview_url,
                         "notes_count": f.notes_count,
                         "mime_type": f.mime_type,
                         "created_at": f.created_at

@@ -35,6 +35,7 @@ const emit = defineEmits([
   'open-folder',
   'delete-folder',
   'edit-folder',
+  'rename-file',
   'selection-change',
 ])
 
@@ -202,7 +203,7 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
             <!-- 图片预览 -->
             <img
               v-if="isImage(file.mime_type)"
-              :src="`${file.download_url}`"
+              :src="`${file.preview_url}`"
               :alt="file.filename"
               class="w-full h-full object-cover"
             />
@@ -305,6 +306,20 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                 </svg>
                 下载
               </a>
+              <button
+                class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
+                @click="$emit('rename-file', file)"
+                title="重命名"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                  ></path>
+                </svg>
+              </button>
               <button
                 class="btn btn-xs btn-ghost text-red-500 hover:text-red-600"
                 @click="$emit('delete-file', file.id)"
