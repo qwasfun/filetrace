@@ -17,6 +17,9 @@ importers:
       pdfjs-dist:
         specifier: ^5.4.449
         version: 5.4.449
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
       pinia:
         specifier: ^3.0.3
         version: 3.0.4(vue@3.5.25)
@@ -1605,6 +1608,8 @@ packages:
   pdfjs-dist@5.4.449:
     resolution: {integrity: sha512-CegnUaT0QwAyQMS+7o2POr4wWUNNe8VaKKlcuoRHeYo98cVnqPpwOXNSx6Trl6szH02JrRcsPgletV6GmF3LtQ==}
     engines: {node: '>=20.16.0 || >=22.3.0'}
+  pend@1.2.0:
+    resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
 
   perfect-debounce@1.0.0:
     resolution: {integrity: sha512-xCy9V055GLEqoFaHoC1SoLIaLmWctgCUaBaWxDZ7/Zx4CTyX7cJQLJOok/orfjZAh9kEYpjJa4d0KcJmCbctZA==}
@@ -3363,6 +3368,7 @@ snapshots:
   pdfjs-dist@5.4.449:
     optionalDependencies:
       '@napi-rs/canvas': 0.1.86
+  pend@1.2.0: {}
 
   perfect-debounce@1.0.0: {}
 

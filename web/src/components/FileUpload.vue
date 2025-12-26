@@ -73,9 +73,33 @@ const handleFolderSelect = (e) => {
   }
 }
 
+const triggerFileInput = (e) => {
+  e.stopPropagation()
+  // 如果有 Electron API，使用 Electron 的文件选择器
+  if (window.electronAPI) {
+    console.log('Running in Electron environment')
+    console.log('electronAPI is available')
+    selectFilesViaElectron()
+  } else {
+    console.log('Not running in Electron, using browser file picker')
+    // 否则使用浏览器的文件选择器
+    fileInput.value.click()
+  }
+}
+
 const triggerFolderInput = (e) => {
   e.stopPropagation()
-  folderInput.value.click()
+  // folderInput.value.click()
+  // 如果有 Electron API，使用 Electron 的文件选择器
+  if (window.electronAPI) {
+    console.log('Running in Electron environment')
+    console.log('electronAPI is available')
+    selectFolderViaElectron()
+  } else {
+    console.log('Not running in Electron, using browser file picker')
+    // 否则使用浏览器的文件选择器
+    fileInput.value.click()
+  }
 }
 
 // 递归处理文件和文件夹
@@ -130,6 +154,42 @@ const selectFilesViaElectron = async () => {
   }
 }
 
+// 通过 Electron 选择文件
+const selectFilesViaElectron = async () => {
+  try {
+    const filePaths = await window.electronAPI.selectFiles()
+    if (filePaths && filePaths.length > 0) {
+      // 获取所有文件的信息，包括创建和修改时间
+      const filesInfo = await window.electronAPI.getFilesInfo(filePaths)
+      console.log('filesInfo', filesInfo)
+      await uploadFilesWithMetadata(filesInfo)
+    }
+  } catch (error) {
+    console.error('选择文件失败', error)
+    alert('选择文件失败')
+  }
+}
+
+// 通过 Electron 选择文件夹
+const selectFolderViaElectron = async () => {
+  try {
+    const folderPath = await window.electronAPI.selectFolder()
+    if (folderPath) {
+      // 递归获取文件夹内所有文件的信息
+      const filesInfo = await window.electronAPI.getFolderFiles(folderPath)
+      console.log('文件夹文件信息', filesInfo)
+      if (filesInfo && filesInfo.length > 0) {
+        await uploadFolderFilesWithMetadata(filesInfo)
+      } else {
+        alert('文件夹为空')
+      }
+    }
+  } catch (error) {
+    console.error('选择文件夹失败', error)
+    alert('选择文件夹失败')
+  }
+}
+
 // 上传文件（带时间元数据）
 const uploadFilesWithMetadata = async (filesInfo) => {
   uploading.value = true
@@ -144,6 +204,46 @@ const uploadFilesWithMetadata = async (filesInfo) => {
       const file = new File([blob], fileInfo.name)
 
       formData.append('files', file)
+
+      const params = {}
+      if (props.folderId) {
+        params.folder_id = props.folderId
+      }
+
+      // 添加原始创建时间和修改时间
+      if (fileInfo.timestamps) {
+        params.original_created_at = fileInfo.timestamps.created
+        params.original_updated_at = fileInfo.timestamps.modified
+      }
+
+      await fileService.uploadFiles(formData, params)
+    }
+
+    emit('upload-success')
+  } catch (error) {
+    console.error('上传失败', error)
+    alert('上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 上传文件夹文件（带时间元数据和相对路径）
+const uploadFolderFilesWithMetadata = async (filesInfo) => {
+  uploading.value = true
+  try {
+    // 为每个文件单独上传，以便传递时间信息和相对路径
+    for (const fileInfo of filesInfo) {
+      const formData = new FormData()
+
+      // 从文件路径读取文件内容
+      const buffer = await window.electronAPI.readFile(fileInfo.path)
+      const blob = new Blob([buffer])
+      const file = new File([blob], fileInfo.name)
+
+      formData.append('files', file)
+      // 添加相对路径以保留文件夹结构
+      formData.append('relative_paths', fileInfo.relativePath)
 
       const params = {}
       if (props.folderId) {

@@ -27,8 +27,6 @@ function createWindow() {
     win.webContents.openDevTools()
   }
 
-  // console.log('process.env', process.env)
-
   if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:5173')
   } else {
@@ -65,6 +63,58 @@ ipcMain.handle('select-files', async () => {
     return filePaths
   }
   return []
+})
+
+// 处理文件夹选择请求
+ipcMain.handle('select-folder', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openDirectory'],
+  })
+
+  if (!canceled && filePaths.length > 0) {
+    return filePaths[0]
+  }
+  return null
+})
+
+// 递归获取文件夹内所有文件
+ipcMain.handle('get-folder-files', async (event, folderPath) => {
+  try {
+    const filesInfo = []
+
+    function traverseDirectory(dirPath, relativePath = '') {
+      const items = fs.readdirSync(dirPath)
+
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item)
+        const stats = fs.statSync(fullPath)
+        const itemRelativePath = relativePath ? path.join(relativePath, item) : item
+
+        if (stats.isFile()) {
+          filesInfo.push({
+            path: fullPath,
+            relativePath: itemRelativePath,
+            name: item,
+            extension: path.extname(item),
+            timestamps: {
+              created: stats.birthtime,
+              modified: stats.mtime,
+              accessed: stats.atime,
+              changed: stats.ctime,
+            },
+            size: stats.size,
+          })
+        } else if (stats.isDirectory()) {
+          traverseDirectory(fullPath, itemRelativePath)
+        }
+      }
+    }
+
+    traverseDirectory(folderPath)
+    return filesInfo
+  } catch (error) {
+    throw new Error(`无法读取文件夹: ${error.message}`)
+  }
 })
 
 // 获取文件详细信息
