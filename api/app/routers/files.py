@@ -111,10 +111,18 @@ async def upload_files(
         created_at = datetime.utcnow()
         if original_created_at and i < len(original_created_at) and original_created_at[i]:
             created_at = original_created_at[i]
+            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+            if created_at.tzinfo is not None:
+                created_at = created_at.utctimetuple()
+                created_at = datetime(*created_at[:6])
 
         updated_at = datetime.utcnow()
         if original_updated_at and i < len(original_updated_at) and original_updated_at[i]:
             updated_at = original_updated_at[i]
+            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+            if updated_at.tzinfo is not None:
+                updated_at = updated_at.utctimetuple()
+                updated_at = datetime(*updated_at[:6])
 
         # Save to DB
         new_file = File(
