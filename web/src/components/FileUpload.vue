@@ -41,14 +41,10 @@ const triggerFileInput = () => {
   // 如果有 Electron API，使用 Electron 的文件选择器
   if (window.electronAPI) {
     console.log('Running in Electron environment')
-    if (window.electronAPI) {
-      console.log('electronAPI is available')
-      selectFilesViaElectron()
-    } else {
-      console.error('electronAPI is undefined, falling back to browser file picker')
-      fileInput.value.click()
-    }
+    console.log('electronAPI is available')
+    selectFilesViaElectron()
   } else {
+    console.error('electronAPI is undefined, falling back to browser file picker')
     console.log('Not running in Electron, using browser file picker')
     // 否则使用浏览器的文件选择器
     fileInput.value.click()
