@@ -154,22 +154,6 @@ const selectFilesViaElectron = async () => {
   }
 }
 
-// 通过 Electron 选择文件
-const selectFilesViaElectron = async () => {
-  try {
-    const filePaths = await window.electronAPI.selectFiles()
-    if (filePaths && filePaths.length > 0) {
-      // 获取所有文件的信息，包括创建和修改时间
-      const filesInfo = await window.electronAPI.getFilesInfo(filePaths)
-      console.log('filesInfo', filesInfo)
-      await uploadFilesWithMetadata(filesInfo)
-    }
-  } catch (error) {
-    console.error('选择文件失败', error)
-    alert('选择文件失败')
-  }
-}
-
 // 通过 Electron 选择文件夹
 const selectFolderViaElectron = async () => {
   try {
