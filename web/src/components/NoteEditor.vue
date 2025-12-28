@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+    class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col"
   >
     <!-- 头部工具栏 -->
     <div
@@ -36,7 +36,7 @@
     </div>
 
     <!-- 编辑区域 -->
-    <div class="p-6 space-y-6">
+    <div class="p-6 flex-1 flex flex-col gap-6 overflow-hidden">
       <!-- 标题输入 -->
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -100,15 +100,15 @@
         </div>
       </div>
       <!-- 内容编辑 -->
-      <div>
+      <div class="flex-1 flex flex-col min-h-0">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           笔记内容
         </label>
-        <div class="relative">
+        <div class="relative flex-1 flex flex-col">
           <textarea
             v-model="content"
             placeholder="在这里记录您的想法、心得或重要信息..."
-            class="w-full h-64 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 resize-none"
+            class="w-full h-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 resize-none"
           ></textarea>
           <div class="absolute bottom-3 right-3 text-xs text-gray-400">
             {{ content.length }} 字符
