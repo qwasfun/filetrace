@@ -28,6 +28,8 @@ class FileResponseModel(BaseModel):
     storage_path: str
     mime_type: str
     size: int
+    file_type: str | None = None  # text, document, image, video, binary
+    file_type_confidence: str | None = None  # high, medium, low
     original_created_at : datetime | None = None
     original_updated_at : datetime | None = None
     created_at: datetime

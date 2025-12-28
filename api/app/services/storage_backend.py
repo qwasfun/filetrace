@@ -13,13 +13,14 @@ import boto3
 from botocore.exceptions import ClientError
 from fastapi import UploadFile
 from urllib.parse import quote
+from .file_type_detector import FileTypeDetector
 
 
 class StorageBackend(ABC):
     """存储后端抽象基类"""
     
     @abstractmethod
-    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
+    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int, dict]:
         """
         保存文件
         
@@ -28,7 +29,12 @@ class StorageBackend(ABC):
             user_id: 用户ID（可选，用于组织文件结构）
             
         Returns:
-            Tuple[storage_path, mime_type, size]
+            Tuple[storage_path, mime_type, size, file_type_info]
+            file_type_info: {
+                'category': 'text' | 'document' | 'image' | 'video' | 'binary',
+                'mime_type': str,
+                'confidence': 'high' | 'medium' | 'low'
+            }
         """
         pass
     
@@ -86,7 +92,7 @@ class LocalStorageBackend(StorageBackend):
         """将本地文件路径转换为URL友好的格式（使用/作为分隔符）"""
         return filepath.replace("\\", "/")
     
-    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
+    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int, dict]:
         """保存文件到本地磁盘"""
         # 生成日期和时间
         now = datetime.now()
@@ -104,6 +110,10 @@ class LocalStorageBackend(StorageBackend):
         new_filename = f"{shortuuid.uuid()}{file_ext}"
         filepath = os.path.join(target_dir, new_filename)
         
+        # 读取文件内容用于类型检测（读取前8KB用于魔术字节检测）
+        file_content = file.file.read(8192)
+        file.file.seek(0)  # 重置文件指针
+        
         # 保存文件
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
@@ -113,7 +123,14 @@ class LocalStorageBackend(StorageBackend):
         size = os.path.getsize(filepath)
         storage_path = self._normalize_path_to_url(filepath)
         
-        return storage_path, mime_type, size
+        # 检测文件类型
+        file_type_info = FileTypeDetector.detect(
+            filename=file.filename,
+            file_content=file_content,
+            mime_hint=file.content_type
+        )
+        
+        return storage_path, mime_type, size, file_type_info
     
     def delete(self, storage_path: str) -> bool:
         """从本地磁盘删除文件"""
@@ -255,7 +272,7 @@ class S3StorageBackend(StorageBackend):
             return f"{user_id}/{date_str}/{new_filename}"
         return f"anonymous/{date_str}/{new_filename}"
     
-    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
+    def save(self, file: UploadFile, user_id: str = None) -> Tuple[str, str, int, dict]:
         """保存文件到 S3"""
         # 生成 S3 键
         s3_key = self._generate_s3_key(file.filename, user_id)
@@ -266,6 +283,14 @@ class S3StorageBackend(StorageBackend):
         # 读取文件内容
         file_content = file.file.read()
         size = len(file_content)
+        
+        # 检测文件类型（使用完整内容或前8KB）
+        detection_content = file_content[:8192] if len(file_content) > 8192 else file_content
+        file_type_info = FileTypeDetector.detect(
+            filename=file.filename,
+            file_content=detection_content,
+            mime_hint=file.content_type
+        )
         
         # 上传到 S3
         try:
@@ -282,7 +307,7 @@ class S3StorageBackend(StorageBackend):
         # 重置文件指针（如果需要再次读取）
         file.file.seek(0)
         
-        return s3_key, mime_type, size
+        return s3_key, mime_type, size, file_type_info
     
     def delete(self, storage_path: str) -> bool:
         """从 S3 删除文件"""

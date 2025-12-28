@@ -45,16 +45,21 @@ def get_storage() -> StorageBackend:
     return _storage_backend
 
 
-def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, str, int]:
+def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, str, int, dict]:
     """
-    保存文件（兼容旧接口）
+    保存文件
     
     Args:
         file: 上传的文件对象
         user_id: 用户ID（可选）
         
     Returns:
-        Tuple[storage_path, mime_type, size]
+        Tuple[storage_path, mime_type, size, file_type_info]
+        file_type_info: {
+            'category': 'text' | 'document' | 'image' | 'video' | 'binary',
+            'mime_type': str,
+            'confidence': 'high' | 'medium' | 'low'
+        }
     """
     storage = get_storage()
     return storage.save(file, user_id)

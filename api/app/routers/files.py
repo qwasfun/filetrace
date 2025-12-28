@@ -101,7 +101,7 @@ async def upload_files(
             )
 
         # 保存文件（传递 user_id 用于组织文件结构）
-        storage_path, mime_type, size = save_file(file, str(current_user.id))
+        storage_path, mime_type, size, file_type_info = save_file(file, str(current_user.id))
 
         # Determine timestamps
         created_at = datetime.utcnow()
@@ -128,6 +128,8 @@ async def upload_files(
             storage_path=storage_path,
             mime_type=mime_type,
             size=size,
+            file_type=file_type_info.get('category'),
+            file_type_confidence=file_type_info.get('confidence'),
             original_created_at=created_at,
             original_updated_at=updated_at,
         )
