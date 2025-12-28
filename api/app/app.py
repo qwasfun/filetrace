@@ -1,14 +1,13 @@
+import asyncio
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-import asyncio
 
 from app.database import run_migrations
-
-from contextlib import asynccontextmanager
-
-from app.routers import users, auth, files, notes, folders, recycle, stats
+from app.routers import auth, files, folders, notes, recycle, stats, users
 
 
 @asynccontextmanager
@@ -30,6 +29,7 @@ app.include_router(stats.router)
 
 
 # app.include_router(immich.router)
+
 
 @app.get("/api/hello")
 async def hello():

@@ -34,15 +34,15 @@ const handleDrop = async (e) => {
       uploadFiles(files)
     }
   } else if (e.dataTransfer.files.length) {
-    uploadFiles(Array.from(e.dataTransfer.files).map(f => ({file: f, path: f.name})))
+    uploadFiles(Array.from(e.dataTransfer.files).map((f) => ({ file: f, path: f.name })))
   }
 }
 
 const handleFileSelect = (e) => {
   if (e.target.files.length) {
-    const files = Array.from(e.target.files).map(f => ({
+    const files = Array.from(e.target.files).map((f) => ({
       file: f,
-      path: f.name
+      path: f.name,
     }))
     uploadFiles(files)
   }
@@ -50,9 +50,9 @@ const handleFileSelect = (e) => {
 
 const handleFolderSelect = (e) => {
   if (e.target.files.length) {
-    const files = Array.from(e.target.files).map(f => ({
+    const files = Array.from(e.target.files).map((f) => ({
       file: f,
-      path: f.webkitRelativePath || f.name
+      path: f.webkitRelativePath || f.name,
     }))
     uploadFiles(files)
   }
@@ -114,9 +114,9 @@ const uploadFiles = async (filesWithPaths) => {
   const BATCH_SIZE = 20
   const totalFiles = filesWithPaths.length
   let uploadedCount = 0
-  
+
   uploadProgress.value = { current: 0, total: totalFiles }
-  
+
   try {
     for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
       const batch = filesWithPaths.slice(i, i + BATCH_SIZE)
@@ -133,13 +133,13 @@ const uploadFiles = async (filesWithPaths) => {
       if (props.folderId) {
         params.folder_id = props.folderId
       }
-      
+
       await fileService.uploadFiles(formData, params)
       uploadedCount += batch.length
       uploadProgress.value.current = uploadedCount
       console.log(`已上传 ${uploadedCount}/${totalFiles} 个文件`)
     }
-    
+
     emit('upload-success')
   } catch (error) {
     console.error('Upload failed', error)
@@ -165,13 +165,7 @@ const uploadFiles = async (filesWithPaths) => {
     @dragleave="handleDragLeave"
     @drop="handleDrop"
   >
-    <input
-      type="file"
-      multiple
-      class="hidden"
-      ref="fileInput"
-      @change="handleFileSelect"
-    />
+    <input type="file" multiple class="hidden" ref="fileInput" @change="handleFileSelect" />
     <input
       type="file"
       webkitdirectory
@@ -186,9 +180,9 @@ const uploadFiles = async (filesWithPaths) => {
       <p class="text-sm text-base-content/60 mt-1">
         {{ uploadProgress.current }} / {{ uploadProgress.total }} 个文件
       </p>
-      <progress 
-        class="progress progress-primary w-56 mt-2" 
-        :value="uploadProgress.current" 
+      <progress
+        class="progress progress-primary w-56 mt-2"
+        :value="uploadProgress.current"
         :max="uploadProgress.total"
       ></progress>
     </div>
@@ -196,18 +190,8 @@ const uploadFiles = async (filesWithPaths) => {
       <div class="text-4xl mb-4">📂</div>
       <p class="text-lg font-medium mb-4">拖放文件或文件夹到这里</p>
       <div class="flex gap-3 justify-center">
-        <button
-          @click="triggerFileInput"
-          class="btn btn-primary btn-sm"
-        >
-          📄 选择文件
-        </button>
-        <button
-          @click="triggerFolderInput"
-          class="btn btn-secondary btn-sm"
-        >
-          📁 选择文件夹
-        </button>
+        <button @click="triggerFileInput" class="btn btn-primary btn-sm">📄 选择文件</button>
+        <button @click="triggerFolderInput" class="btn btn-secondary btn-sm">📁 选择文件夹</button>
       </div>
       <p class="text-xs text-base-content/60 mt-3">支持拖拽上传，自动保留文件夹结构</p>
     </div>

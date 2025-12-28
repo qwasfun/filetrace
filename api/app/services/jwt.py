@@ -1,9 +1,9 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
-import os
 
 from dotenv import load_dotenv
-from jose import jwt, JWTError
+from jose import JWTError, jwt
 
 # Load environment variables from a .env file (if present)
 load_dotenv()
@@ -36,7 +36,9 @@ def create_access_token(subject: str, expires_delta: Optional[timedelta] = None)
     return encoded_jwt
 
 
-def create_refresh_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_refresh_token(
+    subject: str, expires_delta: Optional[timedelta] = None
+) -> str:
     to_encode = {"sub": subject}
     if expires_delta:
         expire = datetime.utcnow() + expires_delta

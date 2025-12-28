@@ -1,18 +1,16 @@
+import logging
 import os
-from dotenv import load_dotenv
-
 import uuid
+from collections.abc import AsyncGenerator
 from datetime import datetime
 
-from sqlalchemy import Column, String, UUID, Text, DateTime
+from dotenv import load_dotenv
+from sqlalchemy import UUID, Column, DateTime, String, Text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
-from collections.abc import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-
-from alembic.config import Config
 from alembic import command
-import logging
+from alembic.config import Config
 
 load_dotenv()
 
@@ -35,7 +33,7 @@ else:
 # 对 sqlite 使用特定 connect_args（aiosqlite 的 check_same_thread）
 if DATABASE_URL.startswith("sqlite"):
     engine = create_async_engine(
-        DATABASE_URL, 
+        DATABASE_URL,
         connect_args={"check_same_thread": False},
         pool_size=20,  # 增加连接池大小
         max_overflow=40,  # 允许超出连接池的额外连接数
@@ -77,7 +75,10 @@ def run_migrations():
         alembic_ini_path = "alembic.ini"
         if not os.path.exists(alembic_ini_path):
             # Try looking one level up if we are running from app/
-            alembic_ini_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "alembic.ini")
+            alembic_ini_path = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "alembic.ini",
+            )
 
         if not os.path.exists(alembic_ini_path):
             logger.warning("alembic.ini not found, skipping migrations.")

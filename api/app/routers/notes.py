@@ -1,33 +1,37 @@
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func
-from sqlalchemy.orm import selectinload
-from app.schemas import NoteCreate, NoteUpdate, NoteResponse
 from pydantic import BaseModel, Field
+from sqlalchemy import delete, func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.database import get_async_session
+from app.schemas import NoteCreate, NoteResponse, NoteUpdate
 
 
 class FileIdsRequest(BaseModel):
     file_ids: List[str]
 
 
-from app.models import Note, File
-
-from app.models import User
+from app.models import File, Note, User
 from app.services.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/notes", tags=["Notes"])
 
 
 @router.post("/", response_model=NoteResponse)
-async def create_note(note: NoteCreate,
-                      db: AsyncSession = Depends(get_async_session),
-                      current_user: User = Depends(get_current_user)
-                      ):
-    new_note = Note(title=note.title, content=note.content, user_id=current_user.id,
-                    visibility=note.visibility,
-                    )
+async def create_note(
+    note: NoteCreate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    new_note = Note(
+        title=note.title,
+        content=note.content,
+        user_id=current_user.id,
+        visibility=note.visibility,
+    )
     db.add(new_note)
     await db.commit()
     await db.refresh(new_note)
@@ -36,12 +40,12 @@ async def create_note(note: NoteCreate,
 
 @router.get("/")
 async def list_notes(
-        q: Optional[str] = None,
-        file_id: Optional[str] = None,
-        page: int = Query(1, ge=1, description="页码，从1开始"),
-        page_size: int = Query(10, ge=1, le=100, description="每页条数，默认10"),
-        db: AsyncSession = Depends(get_async_session),
-        current_user: User = Depends(get_current_user)
+    q: Optional[str] = None,
+    file_id: Optional[str] = None,
+    page: int = Query(1, ge=1, description="页码，从1开始"),
+    page_size: int = Query(10, ge=1, le=100, description="每页条数，默认10"),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     """获取当前用户的笔记列表（分页）"""
 
@@ -49,7 +53,11 @@ async def list_notes(
     offset = (page - 1) * page_size
 
     # 基础查询
-    stmt = select(Note).where(Note.user_id == current_user.id).options(selectinload(Note.files).selectinload(File.notes))
+    stmt = (
+        select(Note)
+        .where(Note.user_id == current_user.id)
+        .options(selectinload(Note.files).selectinload(File.notes))
+    )
 
     if file_id:
         stmt = stmt.join(Note.files).where(File.id == file_id)
@@ -94,21 +102,27 @@ async def list_notes(
                         "preview_url": f.preview_url,
                         "notes_count": f.notes_count,
                         "mime_type": f.mime_type,
-                        "created_at": f.created_at
+                        "created_at": f.created_at,
                     }
                     for f in note.files
-                ]
+                ],
             }
             for note in notes
-        ]
+        ],
     }
 
 
 @router.get("/{note_id}", response_model=NoteResponse)
-async def get_note(note_id: str, db: AsyncSession = Depends(get_async_session),
-                   current_user: User = Depends(get_current_user)):
-    query = select(Note).options(selectinload(Note.files).selectinload(File.notes)).where(
-        (Note.id == note_id) & (Note.user_id == current_user.id))
+async def get_note(
+    note_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    query = (
+        select(Note)
+        .options(selectinload(Note.files).selectinload(File.notes))
+        .where((Note.id == note_id) & (Note.user_id == current_user.id))
+    )
     result = await db.execute(query)
     note = result.scalar_one_or_none()
     if not note:
@@ -117,8 +131,12 @@ async def get_note(note_id: str, db: AsyncSession = Depends(get_async_session),
 
 
 @router.put("/{note_id}")
-async def update_note(note_id: str, note_update: NoteUpdate, db: AsyncSession = Depends(get_async_session),
-                      current_user: User = Depends(get_current_user)):
+async def update_note(
+    note_id: str,
+    note_update: NoteUpdate,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
     query = select(Note).where((Note.id == note_id) & (Note.user_id == current_user.id))
     result = await db.execute(query)
     note = result.scalar_one_or_none()
@@ -136,8 +154,11 @@ async def update_note(note_id: str, note_update: NoteUpdate, db: AsyncSession = 
 
 
 @router.delete("/{note_id}")
-async def delete_note(note_id: str, db: AsyncSession = Depends(get_async_session),
-                      current_user: User = Depends(get_current_user)):
+async def delete_note(
+    note_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
     query = select(Note).where((Note.id == note_id) & (Note.user_id == current_user.id))
     result = await db.execute(query)
     note = result.scalar_one_or_none()
@@ -151,15 +172,18 @@ async def delete_note(note_id: str, db: AsyncSession = Depends(get_async_session
 
 @router.post("/{note_id}/attach")
 async def attach_files(
-        note_id: str,
-        request: FileIdsRequest,
-        db: AsyncSession = Depends(get_async_session),
-        current_user: User = Depends(get_current_user)
+    note_id: str,
+    request: FileIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     file_ids = request.file_ids
     # Fetch note
-    query = select(Note).options(selectinload(Note.files)).where(
-        (Note.id == note_id) & (Note.user_id == current_user.id))
+    query = (
+        select(Note)
+        .options(selectinload(Note.files))
+        .where((Note.id == note_id) & (Note.user_id == current_user.id))
+    )
     result = await db.execute(query)
     note = result.scalar_one_or_none()
     if not note:
@@ -169,9 +193,9 @@ async def attach_files(
     files_result = await db.execute(select(File).where(File.id.in_(file_ids)))
     files_to_attach = files_result.scalars().all()
 
-    # Append new files (avoiding duplicates if already attached is generic set logic, 
+    # Append new files (avoiding duplicates if already attached is generic set logic,
     # but SQLAlchemy relationships might handle duplications or we should check)
-    # A simple way involves using a set of IDs or letting sqlalchemy handle the merge if configured, 
+    # A simple way involves using a set of IDs or letting sqlalchemy handle the merge if configured,
     # but explicit check is safer for basic List add.
 
     current_ids = {f.id for f in note.files}
@@ -185,14 +209,17 @@ async def attach_files(
 
 @router.post("/{note_id}/detach")
 async def detach_files(
-        note_id: str,
-        request: FileIdsRequest,
-        db: AsyncSession = Depends(get_async_session),
-        current_user: User = Depends(get_current_user)
+    note_id: str,
+    request: FileIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
 ):
     file_ids = request.file_ids
-    query = select(Note).options(selectinload(Note.files)).where(
-        (Note.id == note_id) & (Note.user_id == current_user.id))
+    query = (
+        select(Note)
+        .options(selectinload(Note.files))
+        .where((Note.id == note_id) & (Note.user_id == current_user.id))
+    )
     result = await db.execute(query)
     note = result.scalar_one_or_none()
     if not note:

@@ -18,7 +18,9 @@
             {{ getFileIcon(file.mime_type) }}
           </div>
           <div>
-            <h2 class="font-semibold text-gray-900 dark:text-gray-100">{{ file.filename }}</h2>
+            <h2 class="font-semibold text-gray-900 dark:text-gray-100">
+              {{ file.filename }}
+            </h2>
             <p class="text-sm text-gray-500">
               {{ formatSize(file.size) }} • {{ formatDate(file.created_at) }}
             </p>
@@ -136,10 +138,7 @@
               class="relative bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 p-2 flex justify-center"
               :ref="(el) => setPageRef(el, page.pageNumber)"
             >
-              <canvas
-                :ref="(el) => setCanvasRef(el, page.pageNumber)"
-                class="max-w-full"
-              ></canvas>
+              <canvas :ref="(el) => setCanvasRef(el, page.pageNumber)" class="max-w-full"></canvas>
 
               <div
                 v-if="!page.rendered && !page.error"
@@ -157,7 +156,10 @@
               </div>
             </div>
 
-            <div v-if="!pdfLoading && !pdfError && pdfPages.length === 0" class="text-center text-gray-500">
+            <div
+              v-if="!pdfLoading && !pdfError && pdfPages.length === 0"
+              class="text-center text-gray-500"
+            >
               未找到可渲染的页面
             </div>
           </div>
@@ -172,7 +174,9 @@
               >
                 🎵
               </div>
-              <h3 class="font-medium text-gray-900 dark:text-gray-100">{{ file.filename }}</h3>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">
+                {{ file.filename }}
+              </h3>
             </div>
             <audio :src="`${file.preview_url}`" controls class="w-full">
               您的浏览器不支持音频播放

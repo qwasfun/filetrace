@@ -1,6 +1,8 @@
-from pydantic import BaseModel
 from datetime import datetime
 from enum import Enum
+
+from pydantic import BaseModel
+
 
 class Visibility(str, Enum):
     PRIVATE = "PRIVATE"
@@ -30,8 +32,8 @@ class FileResponseModel(BaseModel):
     size: int
     file_type: str | None = None  # text, document, image, video, binary
     file_type_confidence: str | None = None  # high, medium, low
-    original_created_at : datetime | None = None
-    original_updated_at : datetime | None = None
+    original_created_at: datetime | None = None
+    original_updated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime | None = None
     is_deleted: bool | int = False
