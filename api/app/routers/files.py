@@ -13,10 +13,26 @@ from datetime import datetime
 from app.services.storage import save_file, delete_file, file_exists, get_storage, get_public_url
 from app.services.storage_backend import S3StorageBackend
 import os
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import uuid
 
 router = APIRouter(prefix="/api/v1/files", tags=["Files"])
 
 UPLOAD_DIR = "data/uploads"
+
+# 创建线程池执行器用于处理同步IO操作（文件保存）
+# max_workers 设置原则：
+# - IO密集型任务：推荐 CPU核心数 × (2-5)
+# - 本地存储：CPU核心数 × 2-3
+# - 网络存储(S3)：CPU核心数 × 3-5
+# - 可通过环境变量 FILE_UPLOAD_WORKERS 自定义
+_cpu_count = os.cpu_count() or 4
+_max_workers = int(os.getenv('FILE_UPLOAD_WORKERS', str(_cpu_count * 3)))
+_file_io_executor = ThreadPoolExecutor(
+    max_workers=_max_workers, 
+    thread_name_prefix="file_io"
+)
 
 
 async def get_or_create_folder_by_path(
@@ -81,75 +97,111 @@ async def upload_files(
         db: AsyncSession = Depends(get_async_session),
         current_user: User = Depends(get_current_user)
 ):
-    # 批量提交大小限制，避免单次事务过大
-    BATCH_SIZE = 20
-    results = []
-
+    """优化的文件上传：先处理文件IO，再批量插入数据库"""
+    loop = asyncio.get_event_loop()
+    
+    # 第一阶段：并行处理文件夹结构和文件保存（IO密集）
+    # 这部分不持有数据库连接，避免阻塞其他请求
+    file_data_list = []
+    folder_cache = {}  # 缓存已创建的文件夹ID
+    
+    # 先单独处理文件夹结构（需要数据库操作）
     for i, file in enumerate(files):
-        # 从 filename 中获取相对路径（webkitRelativePath）
         relative_path = file.filename or ""
-
-        # 解析文件夹路径和文件名
-        target_folder_id = folder_id
-        actual_filename = os.path.basename(relative_path) if relative_path else file.filename
         dir_path = os.path.dirname(relative_path) if relative_path else ""
-
-        if dir_path:
-            # 创建或获取文件夹结构
+        
+        if dir_path and dir_path not in folder_cache:
             target_folder_id = await get_or_create_folder_by_path(
                 db, str(current_user.id), folder_id, dir_path
             )
-
-        # 保存文件（传递 user_id 用于组织文件结构）
-        storage_path, size, file_type_info = save_file(file, str(current_user.id))
-
-        # Determine timestamps
+            folder_cache[dir_path] = target_folder_id
+    
+    # 提交文件夹创建（快速释放连接）
+    await db.commit()
+    
+    # 第二阶段：并行保存文件到存储（不持有数据库连接）
+    async def save_file_async(file: UploadFile, index: int):
+        """在线程池中异步保存文件"""
+        relative_path = file.filename or ""
+        actual_filename = os.path.basename(relative_path) if relative_path else file.filename
+        dir_path = os.path.dirname(relative_path) if relative_path else ""
+        
+        target_folder_id = folder_cache.get(dir_path) if dir_path else folder_id
+        
+        # 在线程池中执行同步IO
+        storage_path, size, file_type_info = await loop.run_in_executor(
+            _file_io_executor,
+            save_file,
+            file,
+            str(current_user.id)
+        )
+        
+        # 处理时间戳
         created_at = datetime.utcnow()
-        if original_created_at and i < len(original_created_at) and original_created_at[i]:
-            created_at = original_created_at[i]
-            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+        if original_created_at and index < len(original_created_at) and original_created_at[index]:
+            created_at = original_created_at[index]
             if created_at.tzinfo is not None:
                 created_at = created_at.utctimetuple()
                 created_at = datetime(*created_at[:6])
-
+        
         updated_at = datetime.utcnow()
-        if original_updated_at and i < len(original_updated_at) and original_updated_at[i]:
-            updated_at = original_updated_at[i]
-            # 如果 datetime 带有时区信息，转换为 UTC 并移除时区信息
+        if original_updated_at and index < len(original_updated_at) and original_updated_at[index]:
+            updated_at = original_updated_at[index]
             if updated_at.tzinfo is not None:
                 updated_at = updated_at.utctimetuple()
                 updated_at = datetime(*updated_at[:6])
-
-        # Save to DB
-        new_file = File(
-            user_id=current_user.id,
-            folder_id=target_folder_id,
-            filename=actual_filename,
-            storage_path=storage_path,
-            mime_type=file_type_info.get('mime_type'),
-            size=size,
-            file_type=file_type_info.get('category'),
-            file_type_confidence=file_type_info.get('confidence'),
-            original_created_at=created_at,
-            original_updated_at=updated_at,
+        
+        return {
+            'user_id': str(current_user.id),
+            'folder_id': target_folder_id,
+            'filename': actual_filename,
+            'storage_path': storage_path,
+            'mime_type': file_type_info.get('mime_type'),
+            'size': size,
+            'file_type': file_type_info.get('category'),
+            'file_type_confidence': file_type_info.get('confidence'),
+            'original_created_at': created_at,
+            'original_updated_at': updated_at,
+        }
+    
+    # 并行保存所有文件
+    file_data_list = await asyncio.gather(
+        *[save_file_async(file, i) for i, file in enumerate(files)]
+    )
+    
+    # 第三阶段：批量插入数据库（快速操作）
+    # 使用bulk_insert_mappings进行高效批量插入
+    if file_data_list:
+        # 添加创建时间、更新时间和ID
+        now = datetime.utcnow()
+        for data in file_data_list:
+            data['id'] = str(uuid.uuid4())
+            data['created_at'] = now
+            data['updated_at'] = now
+            data['is_deleted'] = 0
+        
+        # 批量插入（非常快）
+        # 使用 File.__mapper__ 来获取正确的 mapper 对象
+        from sqlalchemy import inspect
+        file_mapper = inspect(File)
+        await db.run_sync(
+            lambda session: session.bulk_insert_mappings(file_mapper, file_data_list)
         )
-        db.add(new_file)
-        results.append(new_file)
-
-        # 分批提交，避免单次事务过大
-        if (i + 1) % BATCH_SIZE == 0:
-            await db.commit()
-            for result in results[i + 1 - BATCH_SIZE:i + 1]:
-                await db.refresh(result)
-
-    # 提交剩余的文件
-    await db.commit()
-    # 刷新最后一批未刷新的记录
-    last_batch_start = (len(files) // BATCH_SIZE) * BATCH_SIZE
-    for result in results[last_batch_start:]:
-        await db.refresh(result)
-
-    return results
+        await db.commit()
+    
+    # 查询返回插入的记录（可选优化：如果不需要立即返回完整对象，可以只返回基本信息）
+    if file_data_list:
+        # 获取刚插入的文件（通过storage_path匹配）
+        storage_paths = [data['storage_path'] for data in file_data_list]
+        stmt = select(File).where(
+            File.storage_path.in_(storage_paths),
+            File.user_id == current_user.id
+        ).order_by(File.created_at.desc())
+        result = await db.execute(stmt)
+        results = result.scalars().all()
+        return list(results)[:len(files)]  # 返回对应数量的结果
+    
+    return []
 
 
 @router.put("/{file_id}/move", response_model=FileResponseModel)
