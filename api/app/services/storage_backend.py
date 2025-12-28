@@ -384,7 +384,7 @@ class S3StorageBackend(StorageBackend):
             )
             try:
                 params = {
-                    # 'Bucket': self.bucket_name,
+                    'Bucket': self.bucket_name,
                     'Key': storage_path
                 }
                 
