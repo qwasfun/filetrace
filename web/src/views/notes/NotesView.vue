@@ -226,32 +226,35 @@ onMounted(async () => {
           class="h-full flex flex-col bg-base-100 rounded-box shadow-md"
         >
           <!-- Preview Header -->
-          <div class="p-4 border-b border-base-200 flex justify-between items-center">
-            <button class="btn btn-ghost btn-sm md:hidden" @click="isViewing = false">
-              ← 返回
-            </button>
-            <div class="flex-1"></div>
-            <div class="flex gap-2">
-              <button
-                class="btn btn-error btn-sm btn-outline"
-                @click="handleDelete(selectedNote.id)"
-              >
-                🗑️ 删除
+          <div class="p-4 border-b border-base-200">
+            <div class="flex justify-between items-center">
+              <button class="btn btn-ghost btn-sm md:hidden" @click="isViewing = false">
+                ← 返回
               </button>
-              <button class="btn btn-primary btn-sm" @click="handleEdit(selectedNote)">
-                ✏️ 编辑
-              </button>
+              <div class="flex-1"></div>
+              <div class="flex gap-2">
+                <button
+                  class="btn btn-error btn-sm btn-outline"
+                  @click="handleDelete(selectedNote.id)"
+                >
+                  🗑️ 删除
+                </button>
+                <button class="btn btn-primary btn-sm" @click="handleEdit(selectedNote)">
+                  ✏️ 编辑
+                </button>
+              </div>
+            </div>
+
+            <!-- Preview Content -->
+            <!-- <div class="flex-1 overflow-y-auto p-6"> -->
+            <h1 class="text-3xl font-bold py-4">{{ selectedNote.title || 'Untitled Note' }}</h1>
+            <div class="text-sm text-base-content/60 md:flex gap-4">
+              <div>📅 创建于 {{ formatDate(selectedNote.created_at) }}</div>
+              <div>🔄 更新于 {{ formatDate(selectedNote.updated_at) }}</div>
             </div>
           </div>
 
-          <!-- Preview Content -->
           <div class="flex-1 overflow-y-auto p-6">
-            <h1 class="text-3xl font-bold mb-4">{{ selectedNote.title || 'Untitled Note' }}</h1>
-            <div class="text-sm text-base-content/60 mb-6 flex gap-4">
-              <span>📅 创建于 {{ formatDate(selectedNote.created_at) }}</span>
-              <span>🔄 更新于{{ formatDate(selectedNote.updated_at) }}</span>
-            </div>
-
             <!-- 关联文件列表 -->
             <div
               v-if="selectedNote.files && selectedNote.files.length > 0"
