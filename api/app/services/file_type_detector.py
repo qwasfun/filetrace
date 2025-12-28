@@ -106,6 +106,19 @@ class FileTypeDetector:
             '.odt', '.ods', '.odp', '.rtf', '.epub',
         ],
     }
+
+    # 扩展名到 MIME 的补充映射
+    EXT_MIME_OVERRIDES = {
+        '.yaml': 'application/yaml',
+        '.yml': 'application/yaml',
+        '.ts': 'text/x-typescript',
+        '.tsx': 'text/x-typescript',
+        '.jsx': 'text/javascript',
+        '.sass': 'text/x-sass',
+        '.scss': 'text/x-scss',
+        '.manifest': 'text/cache-manifest',
+        '.map': 'application/json',
+    }
     
     @classmethod
     def detect_by_magic_bytes(cls, file_content: bytes) -> Tuple[str, str]:
@@ -166,10 +179,11 @@ class FileTypeDetector:
         # 先检查扩展名分类
         for category, extensions in cls.EXT_CATEGORIES.items():
             if ext in extensions:
-                # 使用 mimetypes 获取 MIME 类型
-                mime_type = mimetypes.guess_type(filename)[0]
+                # 优先使用手动覆盖的 MIME
+                mime_type = cls.EXT_MIME_OVERRIDES.get(ext)
                 if not mime_type:
-                    # 如果 mimetypes 无法识别，使用默认值
+                    mime_type = mimetypes.guess_type(filename)[0]
+                if not mime_type:
                     mime_type = f'{category}/unknown'
                 return category, mime_type
         
