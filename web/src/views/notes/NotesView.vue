@@ -244,12 +244,6 @@ onMounted(async () => {
               <span>🔄 更新于{{ formatDate(selectedNote.updated_at) }}</span>
             </div>
 
-            <!-- 笔记内容 -->
-            <div class="prose dark:prose-invert max-w-none">
-              <pre class="whitespace-pre-wrap wrap-break-word bg-base-200 p-4 rounded-lg">{{
-                selectedNote.content || '暂无内容'
-              }}</pre>
-            </div>
             <!-- 关联文件列表 -->
             <div
               v-if="selectedNote.files && selectedNote.files.length > 0"
@@ -290,6 +284,12 @@ onMounted(async () => {
                   </svg>
                 </div>
               </div>
+            </div>
+            <!-- 笔记内容 -->
+            <div class="prose dark:prose-invert max-w-none">
+              <pre class="whitespace-pre-wrap wrap-break-word bg-base-200 p-4 rounded-lg">{{
+                selectedNote.content || '暂无内容'
+              }}</pre>
             </div>
           </div>
         </div>

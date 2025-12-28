@@ -50,29 +50,20 @@
         />
       </div>
 
-      <!-- 内容编辑 -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          笔记内容
-        </label>
-        <div class="relative">
-          <textarea
-            v-model="content"
-            placeholder="在这里记录您的想法、心得或重要信息..."
-            class="w-full h-64 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 resize-none"
-          ></textarea>
-          <div class="absolute bottom-3 right-3 text-xs text-gray-400">
-            {{ content.length }} 字符
-          </div>
-        </div>
-      </div>
-
       <!-- 关联文件 -->
-      <div v-if="attachedFiles.length > 0">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-          关联的文件 ({{ attachedFiles.length }})
-        </label>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            关联的文件 ({{ attachedFiles.length }})
+          </label>
+          <button @click="showFileSelector = true" class="btn btn-xs btn-primary gap-2">
+            ＋ 关联文件
+          </button>
+        </div>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+          v-if="attachedFiles.length > 0"
+        >
           <div
             v-for="file in attachedFiles"
             :key="file.id"
@@ -108,25 +99,25 @@
           </div>
         </div>
       </div>
+      <!-- 内容编辑 -->
+      <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          笔记内容
+        </label>
+        <div class="relative">
+          <textarea
+            v-model="content"
+            placeholder="在这里记录您的想法、心得或重要信息..."
+            class="w-full h-64 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 resize-none"
+          ></textarea>
+          <div class="absolute bottom-3 right-3 text-xs text-gray-400">
+            {{ content.length }} 字符
+          </div>
+        </div>
+      </div>
 
       <!-- 工具栏 -->
-      <div
-        class="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700"
-      >
-        <div class="flex items-center gap-2">
-          <button @click="showFileSelector = true" class="btn btn-sm btn-ghost gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.586-6.586a2 2 0 00-2.828-2.828l-6.586 6.586a2 2 0 102.828 2.828L19 9"
-              ></path>
-            </svg>
-            关联文件
-          </button>
-        </div>
-
+      <div class="flex items-center justify-end pt-4 border-t border-gray-200 dark:border-gray-700">
         <div class="text-xs text-gray-400">支持 Markdown 格式</div>
       </div>
     </div>
