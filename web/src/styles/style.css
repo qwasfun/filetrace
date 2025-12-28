@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @plugin "daisyui";
+@plugin "@tailwindcss/typography";
 
 /* 自定义样式 */
 :root {

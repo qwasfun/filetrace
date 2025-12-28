@@ -1,5 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import noteService from '../../api/noteService.js'
 import NoteEditor from '../../components/NoteEditor.vue'
 import FilePreview from '../../components/FilePreview.vue'
@@ -127,6 +129,12 @@ const handleClosePreview = () => {
   showFilePreview.value = false
   previewFile.value = null
 }
+
+const renderedContent = computed(() => {
+  if (!selectedNote.value?.content) return '暂无内容'
+  const rawHtml = marked.parse(selectedNote.value.content)
+  return DOMPurify.sanitize(rawHtml)
+})
 
 onMounted(async () => {
   await loadNotes()
@@ -286,10 +294,8 @@ onMounted(async () => {
               </div>
             </div>
             <!-- 笔记内容 -->
-            <div class="prose dark:prose-invert max-w-none">
-              <pre class="whitespace-pre-wrap wrap-break-word bg-base-200 p-4 rounded-lg">{{
-                selectedNote.content || '暂无内容'
-              }}</pre>
+            <div class="prose dark:prose-invert max-w-none mt-4">
+              <div v-html="renderedContent"></div>
             </div>
           </div>
         </div>
