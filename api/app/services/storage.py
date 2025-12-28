@@ -45,7 +45,7 @@ def get_storage() -> StorageBackend:
     return _storage_backend
 
 
-def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, str, int, dict]:
+def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, int, dict]:
     """
     保存文件
     
