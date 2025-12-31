@@ -7,9 +7,7 @@ ENV PATH="$PNPM_HOME:$PATH"
 
 WORKDIR /app/web
 COPY web/. ./
-RUN corepack enable pnpm
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile  \
-    && pnpm run build
+RUN npm install && npm run build
 
 
 ################################
