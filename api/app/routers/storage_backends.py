@@ -18,7 +18,6 @@ from app.schemas import (
     StorageBackendUpdate,
 )
 from app.services.security import get_current_user
-from app.services.storage import reload_storage_backend
 
 router = APIRouter(prefix="/api/v1/storage-backends", tags=["storage-backends"])
 
@@ -90,10 +89,6 @@ async def create_storage_backend(
     db.add(new_backend)
     await db.commit()
     await db.refresh(new_backend)
-
-    # 如果是默认后端，重新加载存储服务
-    if backend_data.is_default:
-        reload_storage_backend()
 
     return _backend_to_response(new_backend)
 
@@ -208,10 +203,6 @@ async def update_storage_backend(
     await db.commit()
     await db.refresh(backend)
 
-    # 如果修改了默认后端，重新加载存储服务
-    if backend.is_default:
-        reload_storage_backend()
-
     return _backend_to_response(backend)
 
 
@@ -272,9 +263,6 @@ async def set_default_backend(
 
     await db.commit()
     await db.refresh(backend)
-
-    # 重新加载存储服务
-    reload_storage_backend()
 
     return _backend_to_response(backend)
 
