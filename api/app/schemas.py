@@ -28,6 +28,7 @@ class FileResponseModel(BaseModel):
     folder_id: str | None = None
     filename: str
     storage_path: str
+    storage_backend_id: str | None = None
     mime_type: str
     size: int
     file_type: str | None = None  # text, document, image, video, binary

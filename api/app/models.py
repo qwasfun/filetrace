@@ -69,6 +69,9 @@ class File(Base):
     )
     user_id = Column(String(36), ForeignKey("users.id"))
     folder_id = Column(String(36), ForeignKey("folders.id"), nullable=True)
+    storage_backend_id = Column(
+        String(36), ForeignKey("storage_backends.id"), nullable=True
+    )
     filename: Mapped[str] = mapped_column(String, index=True)
     storage_path: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)

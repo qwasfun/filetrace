@@ -53,7 +53,9 @@ async def list_recycle_bin_items(
                 "filename": f.filename,
                 "size": f.size,
                 "storage_path": f.storage_path,
-                "download_url": get_public_url(f.storage_path)
+                "download_url": get_public_url(
+                    f.storage_path, backend_id=f.storage_backend_id
+                )
                 or f"/api/v1/files/download/{f.id}/{f.filename}",
                 "mime_type": f.mime_type,
                 "created_at": f.created_at,
@@ -111,7 +113,9 @@ async def permanent_delete_items(
                 await db.delete(file)
                 # Physical delete
                 try:
-                    delete_file_storage(file.storage_path)
+                    delete_file_storage(
+                        file.storage_path, backend_id=file.storage_backend_id
+                    )
                 except Exception as e:
                     print(f"Error deleting file {file.id}: {e}")
 
@@ -149,7 +153,9 @@ async def permanent_delete_items(
                 if file in db:
                     await db.delete(file)
                     try:
-                        delete_file_storage(file.storage_path)
+                        delete_file_storage(
+                            file.storage_path, backend_id=file.storage_backend_id
+                        )
                     except Exception as e:
                         print(f"Error deleting file {file.id}: {e}")
 

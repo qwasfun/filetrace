@@ -132,7 +132,69 @@ def reload_storage_backend():
     print("存储后端已重新加载")
 
 
-def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, int, dict]:
+def get_storage_backend_by_id(backend_id: str = None) -> StorageBackend:
+    """
+    根据ID获取存储后端
+    如果ID为None，返回环境变量配置的后端（兼容旧数据）
+    """
+    if not backend_id:
+        return get_storage_backend_from_env()
+
+    try:
+        from app.models import StorageBackendConfig
+
+        engine = _get_sync_engine()
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
+
+        try:
+            stmt = select(StorageBackendConfig).where(
+                StorageBackendConfig.id == backend_id
+            )
+            result = db.execute(stmt)
+            backend_config = result.scalar_one_or_none()
+
+            if backend_config:
+                config = json.loads(backend_config.config_json)
+
+                if backend_config.backend_type == "s3":
+                    return S3StorageBackend(**config)
+                elif backend_config.backend_type == "local":
+                    return LocalStorageBackend(**config)
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"从数据库加载存储后端配置失败: {e}")
+
+    # 如果找不到或出错，回退到默认后端
+    return get_storage()
+
+
+def get_current_backend_id() -> str | None:
+    """获取当前默认存储后端的ID"""
+    try:
+        from app.models import StorageBackendConfig
+
+        engine = _get_sync_engine()
+        SessionLocal = sessionmaker(bind=engine)
+        db = SessionLocal()
+
+        try:
+            stmt = select(StorageBackendConfig.id).where(
+                StorageBackendConfig.is_default == 1,
+                StorageBackendConfig.is_active == 1,
+            )
+            result = db.execute(stmt)
+            return result.scalar_one_or_none()
+        finally:
+            db.close()
+    except Exception:
+        return None
+
+
+def save_file(
+    file: UploadFile, user_id: str = None
+) -> Tuple[str, int, dict, str | None]:
     """
     保存文件
 
@@ -141,47 +203,50 @@ def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, int, dict]:
         user_id: 用户ID（可选）
 
     Returns:
-        Tuple[storage_path, mime_type, size, file_type_info]
-        file_type_info: {
-            'category': 'text' | 'document' | 'image' | 'video' | 'binary',
-            'mime_type': str,
-            'confidence': 'high' | 'medium' | 'low'
-        }
+        Tuple[storage_path, size, file_type_info, storage_backend_id]
     """
     storage = get_storage()
-    return storage.save(file, user_id)
+    backend_id = get_current_backend_id()
+
+    storage_path, size, file_type_info = storage.save(file, user_id)
+    return storage_path, size, file_type_info, backend_id
 
 
-def delete_file(storage_path: str) -> bool:
+def delete_file(storage_path: str, backend_id: str = None) -> bool:
     """
     删除文件
 
     Args:
         storage_path: 文件存储路径
+        backend_id: 存储后端ID
 
     Returns:
         是否删除成功
     """
-    storage = get_storage()
+    storage = get_storage_backend_by_id(backend_id)
     return storage.delete(storage_path)
 
 
-def file_exists(storage_path: str) -> bool:
+def file_exists(storage_path: str, backend_id: str = None) -> bool:
     """
     检查文件是否存在
 
     Args:
         storage_path: 文件存储路径
+        backend_id: 存储后端ID
 
     Returns:
         文件是否存在
     """
-    storage = get_storage()
+    storage = get_storage_backend_by_id(backend_id)
     return storage.exists(storage_path)
 
 
 def get_download_info(
-    storage_path: str, filename: str = None, disposition: str = "attachment"
+    storage_path: str,
+    filename: str = None,
+    disposition: str = "attachment",
+    backend_id: str = None,
 ) -> dict:
     """
     获取文件下载信息
@@ -190,16 +255,20 @@ def get_download_info(
         storage_path: 文件存储路径
         filename: 文件名（可选）
         disposition: Content-Disposition 类型 (attachment 或 inline)
+        backend_id: 存储后端ID
 
     Returns:
         包含下载所需信息的字典
     """
-    storage = get_storage()
+    storage = get_storage_backend_by_id(backend_id)
     return storage.get_download_info(storage_path, filename, disposition)
 
 
 def get_public_url(
-    storage_path: str, filename: str = None, disposition: str = "attachment"
+    storage_path: str,
+    filename: str = None,
+    disposition: str = "attachment",
+    backend_id: str = None,
 ) -> str:
     """
     获取文件的公共 URL（签名后）
@@ -208,9 +277,10 @@ def get_public_url(
         storage_path: 文件存储路径
         filename: 文件名（可选，用于设置 Content-Disposition）
         disposition: Content-Disposition 类型 (attachment 或 inline)
+        backend_id: 存储后端ID
 
     Returns:
         公共 URL 或 None
     """
-    storage = get_storage()
+    storage = get_storage_backend_by_id(backend_id)
     return storage.get_public_url(storage_path, filename, disposition)
