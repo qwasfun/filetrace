@@ -3,6 +3,7 @@ import os
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from dotenv import load_dotenv
 from sqlalchemy import UUID, Column, DateTime, String, Text
@@ -21,20 +22,43 @@ _DEFAULT_SQLITE = "sqlite+aiosqlite:///./data/app.sqlite"
 # 如果用户提供常见的 postgres URI（postgres:// 或 postgresql://），
 # 会自动把 scheme 转换为 `postgresql+asyncpg://` 以使用 asyncpg
 raw_db_url = os.getenv("DATABASE_URL", "").strip()
+connect_args = {}
+
 if raw_db_url:
     if raw_db_url.startswith("postgres://"):
         raw_db_url = raw_db_url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif raw_db_url.startswith("postgresql://"):
         raw_db_url = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    DATABASE_URL = raw_db_url
+
+    # 解析 URL 处理 asyncpg 不支持的参数
+    parsed = urlparse(raw_db_url)
+    query_params = parse_qs(parsed.query)
+
+    # 处理 sslmode
+    if "sslmode" in query_params:
+        ssl_mode = query_params.pop("sslmode")[0]
+        if ssl_mode == "require":
+            connect_args["ssl"] = "require"
+        elif ssl_mode == "disable":
+            connect_args["ssl"] = False
+
+    # 处理 channel_binding (asyncpg 不支持此参数作为 kwarg，移除以避免报错)
+    if "channel_binding" in query_params:
+        query_params.pop("channel_binding")
+
+    # 重组 URL
+    new_query = urlencode(query_params, doseq=True)
+    parsed = parsed._replace(query=new_query)
+    DATABASE_URL = urlunparse(parsed)
 else:
     DATABASE_URL = _DEFAULT_SQLITE
 
 # 对 sqlite 使用特定 connect_args（aiosqlite 的 check_same_thread）
 if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
     engine = create_async_engine(
         DATABASE_URL,
-        connect_args={"check_same_thread": False},
+        connect_args=connect_args,
         pool_size=20,  # 增加连接池大小
         max_overflow=40,  # 允许超出连接池的额外连接数
         pool_pre_ping=True,  # 连接前ping确保连接有效
@@ -43,6 +67,7 @@ if DATABASE_URL.startswith("sqlite"):
 else:
     engine = create_async_engine(
         DATABASE_URL,
+        connect_args=connect_args,
         pool_size=20,  # 增加连接池大小
         max_overflow=40,  # 允许超出连接池的额外连接数
         pool_pre_ping=True,  # 连接前ping确保连接有效

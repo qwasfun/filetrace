@@ -16,7 +16,7 @@ from alembic import context
 from app import models
 
 # Import Base and DATABASE_URL
-from app.database import DATABASE_URL, Base
+from app.database import DATABASE_URL, Base, connect_args
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -83,6 +83,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     async with connectable.connect() as connection:
