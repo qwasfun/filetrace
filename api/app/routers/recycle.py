@@ -11,7 +11,7 @@ from app.models import File, Folder, User
 from app.schemas import FileResponseModel, FolderResponse
 from app.services.security import get_current_user
 from app.services.storage import delete_file as delete_file_storage
-from app.services.storage import get_public_url
+from app.services.storage import get_public_url, get_storage_backend_by_id
 
 router = APIRouter(prefix="/api/v1/recycle", tags=["Recycle Bin"])
 
@@ -45,23 +45,34 @@ async def list_recycle_bin_items(
     file_res = await db.execute(file_stmt)
     files = file_res.scalars().all()
 
-    return {
-        "folders": folders,
-        "files": [
+    # 预加载所有需要的后端
+    backend_ids = {f.storage_backend_id for f in files if f.storage_backend_id}
+    backends = {}
+    for bid in backend_ids:
+        backends[bid] = await get_storage_backend_by_id(db, bid)
+
+    # 默认后端
+    default_backend = await get_storage_backend_by_id(db, None)
+
+    file_list = []
+    for f in files:
+        backend = backends.get(f.storage_backend_id, default_backend)
+        file_list.append(
             {
                 "id": f.id,
                 "filename": f.filename,
                 "size": f.size,
                 "storage_path": f.storage_path,
-                "download_url": get_public_url(
-                    f.storage_path, backend_id=f.storage_backend_id
-                )
+                "download_url": get_public_url(f.storage_path, backend=backend)
                 or f"/api/v1/files/download/{f.id}/{f.filename}",
                 "mime_type": f.mime_type,
                 "created_at": f.created_at,
             }
-            for f in files
-        ],
+        )
+
+    return {
+        "folders": folders,
+        "files": file_list,
     }
 
 
@@ -113,9 +124,10 @@ async def permanent_delete_items(
                 await db.delete(file)
                 # Physical delete
                 try:
-                    delete_file_storage(
-                        file.storage_path, backend_id=file.storage_backend_id
+                    backend = await get_storage_backend_by_id(
+                        db, file.storage_backend_id
                     )
+                    delete_file_storage(file.storage_path, backend=backend)
                 except Exception as e:
                     print(f"Error deleting file {file.id}: {e}")
 
@@ -153,9 +165,10 @@ async def permanent_delete_items(
                 if file in db:
                     await db.delete(file)
                     try:
-                        delete_file_storage(
-                            file.storage_path, backend_id=file.storage_backend_id
+                        backend = await get_storage_backend_by_id(
+                            db, file.storage_backend_id
                         )
+                        delete_file_storage(file.storage_path, backend=backend)
                     except Exception as e:
                         print(f"Error deleting file {file.id}: {e}")
 
