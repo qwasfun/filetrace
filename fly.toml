@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for archivenote on 2025-12-31T10:00:31Z
+# fly.toml app configuration file generated for archivenote-qrg-gg on 2025-12-31T10:06:22Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'archivenote'
+app = 'archivenote-qrg-gg'
 primary_region = 'lax'
 
 [build]
