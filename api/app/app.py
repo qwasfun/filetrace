@@ -7,7 +7,16 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.database import run_migrations
-from app.routers import auth, files, folders, notes, recycle, stats, users
+from app.routers import (
+    auth,
+    files,
+    folders,
+    notes,
+    recycle,
+    stats,
+    storage_backends,
+    users,
+)
 
 
 @asynccontextmanager
@@ -26,6 +35,7 @@ app.include_router(notes.router)
 app.include_router(folders.router)
 app.include_router(recycle.router)
 app.include_router(stats.router)
+app.include_router(storage_backends.router)
 
 
 # app.include_router(immich.router)

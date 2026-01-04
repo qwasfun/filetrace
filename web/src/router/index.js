@@ -43,6 +43,11 @@ const router = createRouter({
       name: 'search',
       component: () => import('../views/index/SearchView.vue'),
     },
+    {
+      path: '/admin/storage-backends',
+      name: 'storage-backends',
+      component: () => import('../views/admin/StorageBackendsView.vue'),
+    },
   ],
 })
 
