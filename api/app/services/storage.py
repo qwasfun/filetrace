@@ -14,40 +14,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .storage_backend import LocalStorageBackend, S3StorageBackend, StorageBackend
 
 
-def get_storage_backend_from_env() -> StorageBackend:
+def _get_default_local_storage() -> StorageBackend:
     """
-    从环境变量获取存储后端（回退方案）
+    获取默认本地存储后端（回退方案）
 
     Returns:
-        StorageBackend 实例
+        LocalStorageBackend 实例
     """
-    storage_type = os.getenv("STORAGE_TYPE", "local").lower()
-
-    if storage_type == "s3":
-        # S3 存储配置
-        return S3StorageBackend(
-            bucket_name=os.getenv("S3_BUCKET_NAME", ""),
-            access_key=os.getenv("S3_ACCESS_KEY", ""),
-            secret_key=os.getenv("S3_SECRET_KEY", ""),
-            endpoint_url=os.getenv("S3_ENDPOINT_URL") or None,
-            region_name=os.getenv("S3_REGION_NAME", "us-east-1"),
-            public_url=os.getenv("S3_PUBLIC_URL") or None,
-        )
-    else:
-        # 默认使用本地存储
-        base_dir = os.getenv("LOCAL_STORAGE_DIR", "data/files")
-        return LocalStorageBackend(base_dir=base_dir)
+    return LocalStorageBackend(base_dir="data/files")
 
 
 async def get_storage_backend_by_id(
-    session: AsyncSession, backend_id: str = None
+    session: AsyncSession, backend_id: str | None = None
 ) -> StorageBackend:
     """
     根据ID获取存储后端 (异步)
-    如果ID为None，返回环境变量配置的后端（兼容旧数据）
+    如果ID为None，返回默认本地存储后端（兼容旧数据）
     """
     if not backend_id:
-        return get_storage_backend_from_env()
+        return _get_default_local_storage()
 
     try:
         # 延迟导入以避免循环依赖
@@ -67,8 +52,8 @@ async def get_storage_backend_by_id(
     except Exception as e:
         print(f"从数据库加载存储后端配置失败: {e}")
 
-    # 如果找不到或出错，回退到默认后端
-    return get_storage_backend_from_env()
+    # 如果找不到或出错，回退到默认本地存储
+    return _get_default_local_storage()
 
 
 async def get_default_storage_backend(
@@ -100,16 +85,16 @@ async def get_default_storage_backend(
                 backend = LocalStorageBackend(**config)
 
             if backend:
-                return backend, backend_config.id
+                return backend, str(backend_config.id)
     except Exception as e:
         print(f"从数据库加载默认存储后端配置失败: {e}")
 
-    # 回退到环境变量
-    return get_storage_backend_from_env(), None
+    # 回退到默认本地存储
+    return _get_default_local_storage(), None
 
 
 def save_file(
-    file: UploadFile, backend: StorageBackend, user_id: str = None
+    file: UploadFile, backend: StorageBackend, user_id: str | None = None
 ) -> Tuple[str, int, dict]:
     """
     保存文件 (同步，需在线程池运行)
@@ -156,7 +141,7 @@ def file_exists(storage_path: str, backend: StorageBackend) -> bool:
 def get_download_info(
     storage_path: str,
     backend: StorageBackend,
-    filename: str = None,
+    filename: str | None = None,
     disposition: str = "attachment",
 ) -> dict:
     """
@@ -177,9 +162,9 @@ def get_download_info(
 def get_public_url(
     storage_path: str,
     backend: StorageBackend,
-    filename: str = None,
+    filename: str | None = None,
     disposition: str = "attachment",
-) -> str:
+) -> str | None:
     """
     获取文件的公共 URL（签名后）
 
