@@ -35,4 +35,22 @@ export default {
   testBackend(id) {
     return service.post(`/v1/storage-backends/${id}/test`)
   },
+
+  // 导出存储配置
+  exportConfig() {
+    return service.get('/v1/storage-backends/export/config')
+  },
+
+  // 导入存储配置
+  importConfig(formData, replaceExisting = false) {
+    return service.post(
+      `/v1/storage-backends/import/config?replace_existing=${replaceExisting}`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
+  },
 }

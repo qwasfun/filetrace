@@ -3,9 +3,12 @@
 """
 
 import json
+import uuid
+from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -316,4 +319,173 @@ async def test_storage_backend(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"存储后端测试失败: {str(e)}",
+        )
+
+
+@router.get("/export/config")
+async def export_storage_config(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """导出所有存储后端配置为 JSON 格式"""
+    stmt = select(StorageBackendConfig).order_by(StorageBackendConfig.created_at)
+    result = await db.execute(stmt)
+    backends = result.scalars().all()
+
+    export_data = {
+        "version": "1.0",
+        "export_time": datetime.utcnow().isoformat(),
+        "total_count": len(backends),
+        "backends": [
+            {
+                "name": backend.name,
+                "backend_type": backend.backend_type,
+                "config": _config_to_dict(backend),
+                "description": backend.description,
+                "is_active": bool(backend.is_active),
+                "is_default": bool(backend.is_default),
+            }
+            for backend in backends
+        ],
+    }
+
+    filename = f"storage_config_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+    return JSONResponse(
+        content=export_data,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.post("/import/config")
+async def import_storage_config(
+    file: UploadFile = File(...),
+    replace_existing: bool = False,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """从 JSON 文件导入存储后端配置
+
+    Args:
+        file: JSON 配置文件
+        replace_existing: 是否替换现有同名配置（默认 False，跳过同名配置）
+    """
+    try:
+        # 读取文件内容
+        content = await file.read()
+        import_data = json.loads(content)
+
+        # 验证数据格式
+        if "backends" not in import_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="无效的配置文件格式，缺少 'backends' 字段",
+            )
+
+        backends_to_import = import_data["backends"]
+        if not isinstance(backends_to_import, list):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="'backends' 必须是数组"
+            )
+
+        # 统计信息
+        stats = {
+            "total": len(backends_to_import),
+            "imported": 0,
+            "skipped": 0,
+            "updated": 0,
+            "errors": [],
+        }
+
+        # 获取现有配置
+        stmt = select(StorageBackendConfig)
+        result = await db.execute(stmt)
+        existing_backends = {b.name: b for b in result.scalars().all()}
+
+        # 如果要设置新的默认后端，先取消所有现有默认
+        has_new_default = any(b.get("is_default") for b in backends_to_import)
+        if has_new_default:
+            for backend in existing_backends.values():
+                backend.is_default = False
+
+        # 导入配置
+        for idx, backend_data in enumerate(backends_to_import):
+            try:
+                # 验证必需字段
+                if not all(
+                    k in backend_data for k in ["name", "backend_type", "config"]
+                ):
+                    stats["errors"].append(
+                        f"配置 #{idx + 1}: 缺少必需字段 (name, backend_type, config)"
+                    )
+                    stats["skipped"] += 1
+                    continue
+
+                name = backend_data["name"]
+                backend_type = backend_data["backend_type"]
+                config = backend_data["config"]
+
+                # 验证后端类型
+                if backend_type not in ["local", "s3"]:
+                    stats["errors"].append(
+                        f"配置 '{name}': 不支持的存储类型 '{backend_type}'"
+                    )
+                    stats["skipped"] += 1
+                    continue
+
+                # 检查是否存在同名配置
+                if name in existing_backends:
+                    if replace_existing:
+                        # 更新现有配置
+                        backend = existing_backends[name]
+                        backend.backend_type = backend_type
+                        backend.config_json = json.dumps(config)
+                        backend.description = backend_data.get("description")
+                        backend.is_active = backend_data.get("is_active", False)
+                        backend.is_default = backend_data.get("is_default", False)
+                        backend.updated_at = datetime.utcnow()
+                        stats["updated"] += 1
+                    else:
+                        stats["errors"].append(f"配置 '{name}': 已存在，跳过")
+                        stats["skipped"] += 1
+                        continue
+                else:
+                    # 创建新配置
+                    new_backend = StorageBackendConfig(
+                        id=str(uuid.uuid4()),
+                        name=name,
+                        backend_type=backend_type,
+                        config_json=json.dumps(config),
+                        description=backend_data.get("description"),
+                        is_active=backend_data.get("is_active", False),
+                        is_default=backend_data.get("is_default", False),
+                        created_by=current_user.id,
+                        created_at=datetime.utcnow(),
+                        updated_at=datetime.utcnow(),
+                    )
+                    db.add(new_backend)
+                    stats["imported"] += 1
+
+            except Exception as e:
+                stats["errors"].append(
+                    f"配置 #{idx + 1} ('{backend_data.get('name', 'unknown')}'): {str(e)}"
+                )
+                stats["skipped"] += 1
+
+        # 提交更改
+        await db.commit()
+
+        return {
+            "status": "success",
+            "message": f"导入完成: {stats['imported']} 个新增, {stats['updated']} 个更新, {stats['skipped']} 个跳过",
+            "stats": stats,
+        }
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="无效的 JSON 文件"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"导入失败: {str(e)}",
         )

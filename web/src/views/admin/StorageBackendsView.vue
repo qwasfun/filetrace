@@ -7,21 +7,85 @@
           管理文件存储位置，支持本地存储和 S3 兼容对象存储
         </p>
       </div>
-      <button class="btn btn-primary" @click="openCreateModal">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-5 w-5 mr-2"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path
-            fill-rule="evenodd"
-            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-            clip-rule="evenodd"
-          />
-        </svg>
-        添加存储后端
-      </button>
+      <div class="flex gap-2">
+        <div class="dropdown dropdown-end">
+          <label tabindex="0" class="btn btn-outline btn-sm">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-1"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+              />
+            </svg>
+            更多操作
+          </label>
+          <ul
+            tabindex="0"
+            class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52 mt-2"
+          >
+            <li>
+              <a @click="handleExport">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                导出配置
+              </a>
+            </li>
+            <li>
+              <a @click="openImportModal">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L9 8m4-4v12"
+                  />
+                </svg>
+                导入配置
+              </a>
+            </li>
+          </ul>
+        </div>
+        <button class="btn btn-sm btn-primary" @click="openCreateModal">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 mr-2"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+              clip-rule="evenodd"
+            />
+          </svg>
+          添加存储后端
+        </button>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -308,6 +372,120 @@
       </form>
     </dialog>
 
+    <!-- Import Modal -->
+    <dialog id="import_modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg mb-4">导入存储配置</h3>
+
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">选择 JSON 配置文件</span>
+          </label>
+          <input
+            type="file"
+            ref="importFileInput"
+            @change="handleFileSelect"
+            accept=".json,application/json"
+            class="file-input file-input-bordered w-full"
+          />
+          <label class="label">
+            <span class="label-text-alt text-gray-500"> 支持导出的 JSON 配置文件 </span>
+          </label>
+        </div>
+
+        <div class="form-control mt-4">
+          <label class="label cursor-pointer">
+            <span class="label-text">替换现有同名配置</span>
+            <input
+              type="checkbox"
+              v-model="importOptions.replaceExisting"
+              class="checkbox checkbox-primary"
+            />
+          </label>
+          <label class="label">
+            <span class="label-text-alt text-gray-500">
+              勾选后，同名配置将被覆盖；不勾选则跳过同名配置
+            </span>
+          </label>
+        </div>
+
+        <!-- Import Result -->
+        <div v-if="importResult" class="mt-4">
+          <div
+            class="alert"
+            :class="importResult.status === 'success' ? 'alert-success' : 'alert-error'"
+          >
+            <svg
+              v-if="importResult.status === 'success'"
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <svg
+              v-else
+              xmlns="http://www.w3.org/2000/svg"
+              class="stroke-current shrink-0 h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <div class="font-bold">{{ importResult.message }}</div>
+              <div v-if="importResult.stats" class="text-sm mt-1">
+                总计: {{ importResult.stats.total }} | 新增: {{ importResult.stats.imported }} |
+                更新: {{ importResult.stats.updated }} | 跳过: {{ importResult.stats.skipped }}
+              </div>
+              <div
+                v-if="importResult.stats && importResult.stats.errors.length > 0"
+                class="text-sm mt-2"
+              >
+                <details>
+                  <summary class="cursor-pointer">查看错误详情</summary>
+                  <ul class="list-disc list-inside mt-2">
+                    <li v-for="(error, idx) in importResult.stats.errors" :key="idx">
+                      {{ error }}
+                    </li>
+                  </ul>
+                </details>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-action">
+          <button type="button" class="btn" @click="closeImportModal" :disabled="importing">
+            取消
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            @click="handleImport"
+            :disabled="!selectedFile || importing"
+          >
+            <span v-if="importing" class="loading loading-spinner loading-sm"></span>
+            <span v-else>开始导入</span>
+          </button>
+        </div>
+      </div>
+      <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+      </form>
+    </dialog>
+
     <!-- Toast Notification (DaisyUI doesn't have built-in JS toast, using simple fixed div) -->
     <div v-if="toast.show" class="toast toast-end z-50">
       <div class="alert" :class="toast.type === 'success' ? 'alert-success' : 'alert-error'">
@@ -332,6 +510,14 @@ const toast = reactive({
   show: false,
   message: '',
   type: 'success',
+})
+
+const importing = ref(false)
+const selectedFile = ref(null)
+const importFileInput = ref(null)
+const importResult = ref(null)
+const importOptions = reactive({
+  replaceExisting: false,
 })
 
 const form = reactive({
@@ -501,6 +687,79 @@ const handleTest = async (backend) => {
     showToast(error.response?.data?.detail || '连接测试失败', 'error')
   } finally {
     testingId.value = null
+  }
+}
+
+const handleExport = async () => {
+  try {
+    const response = await storageBackendService.exportConfig()
+    // Create download link
+    const blob = new Blob([JSON.stringify(response, null, 2)], {
+      type: 'application/json',
+    })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `storage_config_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    showToast('配置导出成功')
+  } catch (error) {
+    showToast(error.response?.data?.detail || '导出失败', 'error')
+  }
+}
+
+const openImportModal = () => {
+  selectedFile.value = null
+  importResult.value = null
+  importOptions.replaceExisting = false
+  if (importFileInput.value) {
+    importFileInput.value.value = ''
+  }
+  document.getElementById('import_modal').showModal()
+}
+
+const closeImportModal = () => {
+  document.getElementById('import_modal').close()
+}
+
+const handleFileSelect = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    selectedFile.value = file
+    importResult.value = null
+  }
+}
+
+const handleImport = async () => {
+  if (!selectedFile.value) return
+
+  importing.value = true
+  importResult.value = null
+
+  try {
+    const formData = new FormData()
+    formData.append('file', selectedFile.value)
+
+    const result = await storageBackendService.importConfig(formData, importOptions.replaceExisting)
+
+    importResult.value = result
+    showToast(result.message || '导入成功')
+
+    // Refresh list if successful
+    if (result.status === 'success') {
+      fetchBackends()
+    }
+  } catch (error) {
+    importResult.value = {
+      status: 'error',
+      message: error.response?.data?.detail || '导入失败',
+    }
+    showToast(error.response?.data?.detail || '导入失败', 'error')
+  } finally {
+    importing.value = false
   }
 }
 
