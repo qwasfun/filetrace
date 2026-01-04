@@ -50,6 +50,52 @@
         />
       </div>
 
+      <!-- 关联文件夹 -->
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            关联的文件夹 ({{ attachedFolders.length }})
+          </label>
+          <button @click="showFolderSelector = true" class="btn btn-xs btn-primary gap-2">
+            ＋ 关联文件夹
+          </button>
+        </div>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+          v-if="attachedFolders.length > 0"
+        >
+          <div
+            v-for="folder in attachedFolders"
+            :key="folder.id"
+            class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600"
+          >
+            <div class="text-2xl">📁</div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+                {{ folder.name }}
+              </p>
+              <p class="text-xs text-gray-500">
+                {{ new Date(folder.updated_at).toLocaleDateString() }}
+              </p>
+            </div>
+            <button
+              @click="handleDetachFolder(folder.id)"
+              class="btn btn-xs btn-ghost text-gray-400 hover:text-red-500"
+              title="移除关联"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- 关联文件 -->
       <div>
         <div class="flex items-center justify-between mb-3">
@@ -122,6 +168,40 @@
       </div>
     </div>
 
+    <!-- 文件夹选择器模态框 -->
+    <div
+      v-if="showFolderSelector"
+      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      @click.self="showFolderSelector = false"
+    >
+      <div
+        class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+      >
+        <div
+          class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
+        >
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">选择要关联的文件夹</h3>
+          <button @click="showFolderSelector = false" class="btn btn-sm btn-circle btn-ghost">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+        <div class="p-4">
+          <FolderSelector
+            :exclude-ids="attachedFolders.map((f) => f.id)"
+            @select="handleAttachFolders"
+            @cancel="showFolderSelector = false"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- 文件选择器模态框 -->
     <div
       v-if="showFileSelector"
@@ -162,6 +242,7 @@
 import { ref, watch } from 'vue'
 import noteService from '../api/noteService'
 import FileSelector from './FileSelector.vue'
+import FolderSelector from './FolderSelector.vue'
 
 const props = defineProps({
   note: {
@@ -175,7 +256,9 @@ const emit = defineEmits(['save', 'cancel'])
 const title = ref('')
 const content = ref('')
 const attachedFiles = ref([])
+const attachedFolders = ref([])
 const showFileSelector = ref(false)
+const showFolderSelector = ref(false)
 
 // 文件相关辅助函数
 const getFileIcon = (mimeType) => {
@@ -215,10 +298,12 @@ watch(
       title.value = newNote.title || ''
       content.value = newNote.content || ''
       attachedFiles.value = newNote.files || []
+      attachedFolders.value = newNote.folders || []
     } else {
       title.value = ''
       content.value = ''
       attachedFiles.value = []
+      attachedFolders.value = []
     }
   },
   { immediate: true },
@@ -267,6 +352,38 @@ const handleDetachFile = async (fileId) => {
   } catch (error) {
     console.error('Failed to detach file', error)
     alert('移除文件关联失败')
+  }
+}
+
+const handleAttachFolders = async (folderIds) => {
+  showFolderSelector.value = false
+
+  if (!props.note || !props.note.id) {
+    alert('请先保存笔记，然后再关联文件夹')
+    return
+  }
+
+  try {
+    await noteService.attachFolders(props.note.id, folderIds)
+    const response = await noteService.getNote(props.note.id)
+    attachedFolders.value = response.folders || []
+  } catch (error) {
+    console.error('Failed to attach folders', error)
+    alert('关联文件夹失败')
+  }
+}
+
+const handleDetachFolder = async (folderId) => {
+  if (!props.note || !props.note.id) return
+
+  if (!confirm('确定要移除这个文件夹的关联吗？')) return
+
+  try {
+    await noteService.detachFolders(props.note.id, [folderId])
+    attachedFolders.value = attachedFolders.value.filter((folder) => folder.id !== folderId)
+  } catch (error) {
+    console.error('Failed to detach folder', error)
+    alert('移除文件夹关联失败')
   }
 }
 </script>
