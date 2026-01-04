@@ -14,7 +14,11 @@ class FileIdsRequest(BaseModel):
     file_ids: List[str]
 
 
-from app.models import File, Note, User
+class FolderIdsRequest(BaseModel):
+    folder_ids: List[str]
+
+
+from app.models import File, Folder, Note, User
 from app.services.security import get_current_user
 
 router = APIRouter(prefix="/api/v1/notes", tags=["Notes"])
@@ -42,6 +46,7 @@ async def create_note(
 async def list_notes(
     q: Optional[str] = None,
     file_id: Optional[str] = None,
+    folder_id: Optional[str] = None,
     page: int = Query(1, ge=1, description="页码，从1开始"),
     page_size: int = Query(10, ge=1, le=100, description="每页条数，默认10"),
     db: AsyncSession = Depends(get_async_session),
@@ -57,10 +62,14 @@ async def list_notes(
         select(Note)
         .where(Note.user_id == current_user.id)
         .options(selectinload(Note.files).selectinload(File.notes))
+        .options(selectinload(Note.folders))
     )
 
     if file_id:
         stmt = stmt.join(Note.files).where(File.id == file_id)
+
+    if folder_id:
+        stmt = stmt.join(Note.folders).where(Folder.id == folder_id)
 
     if q:
         # 在标题或内容中搜索
@@ -106,6 +115,16 @@ async def list_notes(
                     }
                     for f in note.files
                 ],
+                "folders": [
+                    {
+                        "id": folder.id,
+                        "name": folder.name,
+                        "parent_id": folder.parent_id,
+                        "created_at": folder.created_at,
+                        "updated_at": folder.updated_at,
+                    }
+                    for folder in note.folders
+                ],
             }
             for note in notes
         ],
@@ -121,6 +140,7 @@ async def get_note(
     query = (
         select(Note)
         .options(selectinload(Note.files).selectinload(File.notes))
+        .options(selectinload(Note.folders))
         .where((Note.id == note_id) & (Note.user_id == current_user.id))
     )
     result = await db.execute(query)
@@ -228,3 +248,63 @@ async def detach_files(
     note.files = [f for f in note.files if f.id not in file_ids]
     await db.commit()
     return {"message": "Files detached"}
+
+
+@router.post("/{note_id}/attach-folders")
+async def attach_folders(
+    note_id: str,
+    request: FolderIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    folder_ids = request.folder_ids
+    # Fetch note
+    query = (
+        select(Note)
+        .options(selectinload(Note.folders))
+        .where((Note.id == note_id) & (Note.user_id == current_user.id))
+    )
+    result = await db.execute(query)
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Fetch folders
+    folders_result = await db.execute(
+        select(Folder).where(
+            Folder.id.in_(folder_ids) & (Folder.user_id == current_user.id)
+        )
+    )
+    folders_to_attach = folders_result.scalars().all()
+
+    # Append new folders (avoiding duplicates)
+    current_ids = {f.id for f in note.folders}
+    for folder in folders_to_attach:
+        if folder.id not in current_ids:
+            note.folders.append(folder)
+
+    await db.commit()
+    return {"message": "Folders attached", "folder_count": len(note.folders)}
+
+
+@router.post("/{note_id}/detach-folders")
+async def detach_folders(
+    note_id: str,
+    request: FolderIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    folder_ids = request.folder_ids
+    query = (
+        select(Note)
+        .options(selectinload(Note.folders))
+        .where((Note.id == note_id) & (Note.user_id == current_user.id))
+    )
+    result = await db.execute(query)
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    note.folders = [f for f in note.folders if f.id not in folder_ids]
+    await db.commit()
+    return {"message": "Folders detached"}

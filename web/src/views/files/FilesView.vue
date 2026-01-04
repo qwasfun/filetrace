@@ -4,6 +4,7 @@ import FileUpload from '../../components/FileUpload.vue'
 import FileGrid from '../../components/FileGrid.vue'
 import FilePreview from '../../components/FilePreview.vue'
 import FileNotes from '../../components/FileNotes.vue'
+import FolderNotes from '../../components/FolderNotes.vue'
 import fileService from '../../api/fileService.js'
 import folderService from '../../api/folderService.js'
 
@@ -23,7 +24,9 @@ const renameFolderName = ref('')
 const renameFileName = ref('')
 const previewFile = ref(null)
 const notesFile = ref(null)
+const notesFolder = ref(null)
 const showNotes = ref(false)
+const showFolderNotes = ref(false)
 const searchQuery = ref('')
 const filterType = ref('all')
 
@@ -311,6 +314,21 @@ const handleNoteCreated = () => {
   loadData()
 }
 
+const handleAddFolderNote = (folder) => {
+  notesFolder.value = folder
+  showFolderNotes.value = true
+}
+
+const handleViewFolderNotes = (folder) => {
+  notesFolder.value = folder
+  showFolderNotes.value = true
+}
+
+const closeFolderNotes = () => {
+  showFolderNotes.value = false
+  notesFolder.value = null
+}
+
 onMounted(() => {
   loadData()
 })
@@ -590,6 +608,8 @@ onMounted(() => {
             @delete-folder="deleteFolder"
             @edit-folder="openRenameFolderModal"
             @rename-file="handleRenameFile"
+            @add-folder-note="handleAddFolderNote"
+            @view-folder-notes="handleViewFolderNotes"
           />
 
           <!-- Pagination -->
@@ -624,6 +644,14 @@ onMounted(() => {
       :is-open="showNotes"
       :file="notesFile"
       @close="closeNotes"
+      @note-created="handleNoteCreated"
+    />
+
+    <!-- 文件夹笔记模态框 -->
+    <FolderNotes
+      :is-open="showFolderNotes"
+      :folder="notesFolder"
+      @close="closeFolderNotes"
       @note-created="handleNoteCreated"
     />
 

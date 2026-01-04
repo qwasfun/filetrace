@@ -46,6 +46,17 @@ class FileResponseModel(BaseModel):
         from_attributes = True
 
 
+class FolderBasicInfo(BaseModel):
+    id: str
+    name: str
+    parent_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class NoteResponse(BaseModel):
     id: str
     user_id: str
@@ -55,6 +66,7 @@ class NoteResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     files: list[FileResponseModel] = []
+    folders: list[FolderBasicInfo] = []
 
     class Config:
         from_attributes = True
@@ -97,6 +109,19 @@ class FolderResponse(FolderBase):
     updated_at: datetime
     is_deleted: bool | int = False
     deleted_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class FolderResponseWithNotes(FolderBase):
+    id: str
+    user_id: str
+    created_at: datetime
+    updated_at: datetime
+    is_deleted: bool | int = False
+    deleted_at: datetime | None = None
+    notes: list["NoteResponse"] = []
 
     class Config:
         from_attributes = True
