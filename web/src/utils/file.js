@@ -3,6 +3,11 @@ export const getFileIcon = (mimeType) => {
   if (mimeType.startsWith('video/')) return '🎥'
   if (mimeType === 'application/pdf') return '📄'
   if (mimeType.startsWith('audio/')) return '🎵'
+  if (
+    mimeType.startsWith('text/') ||
+    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
+  )
+    return '📄'
   if (mimeType.includes('document') || mimeType.includes('word')) return '📝'
   if (mimeType.includes('sheet') || mimeType.includes('excel')) return '📊'
   if (mimeType.includes('presentation') || mimeType.includes('powerpoint')) return '📋'

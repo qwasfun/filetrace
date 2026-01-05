@@ -185,9 +185,9 @@
         </div>
 
         <!-- 文本文件预览 -->
-        <div v-else-if="isText(file.mime_type)" class="p-6">
+        <div v-else-if="isText(file.mime_type)" class="p-4 h-full">
           <div
-            class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto max-h-96"
+            class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto h-full"
           >
             <pre v-if="textContent">{{ textContent }}</pre>
             <div v-else class="flex items-center justify-center py-8">
@@ -393,7 +393,7 @@ const initPdf = async () => {
     // 启用 HTTP Range，避免一次性拉全量
     const task = pdfjsLib.getDocument({
       url: props.file.preview_url,
-      rangeChunkSize: 4 * 1024 * 1024, // 4MB
+      rangeChunkSize: 10 * 1024 * 1024, // 10 MB
       // 仅按 Range 分块，禁用流式全量拉取，避免浏览器触发二次完整下载
       disableStream: true,
       disableAutoFetch: true,
