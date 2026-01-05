@@ -63,6 +63,10 @@ class Folder(Base):
         secondary=folder_note_association, back_populates="folders", lazy="selectin"
     )
 
+    @property
+    def notes_count(self) -> int:
+        return len(self.notes)
+
 
 # Many-to-Many Association Table
 file_note_association = Table(

@@ -88,6 +88,7 @@ async def list_folders(
                 "id": f.id,
                 "name": f.name,
                 "parent_id": f.parent_id,
+                "notes_count": f.notes_count,
                 "created_at": f.created_at,
                 "updated_at": f.updated_at,
             }
