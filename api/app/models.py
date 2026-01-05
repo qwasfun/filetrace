@@ -21,6 +21,25 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow)
 
 
+# Folder-Note Many-to-Many Association Table
+folder_note_association = Table(
+    "folder_note_association",
+    Base.metadata,
+    Column(
+        "folder_id",
+        String(36),
+        ForeignKey("folders.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "note_id",
+        String(36),
+        ForeignKey("notes.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+
 class Folder(Base):
     __tablename__ = "folders"
 
@@ -40,6 +59,13 @@ class Folder(Base):
     # Relationships
     files = relationship("File", back_populates="folder")
     subfolders = relationship("Folder", backref=backref("parent", remote_side=[id]))
+    notes: Mapped[List["Note"]] = relationship(
+        secondary=folder_note_association, back_populates="folders", lazy="selectin"
+    )
+
+    @property
+    def notes_count(self) -> int:
+        return len(self.notes)
 
 
 # Many-to-Many Association Table
@@ -130,4 +156,9 @@ class Note(Base):
     # Relationship to Files
     files: Mapped[List["File"]] = relationship(
         secondary=file_note_association, back_populates="notes", lazy="selectin"
+    )
+
+    # Relationship to Folders
+    folders: Mapped[List["Folder"]] = relationship(
+        secondary=folder_note_association, back_populates="notes", lazy="selectin"
     )

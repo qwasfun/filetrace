@@ -149,8 +149,7 @@
                 :files="files"
                 @delete-file="handleDelete"
                 @preview-file="handlePreview"
-                @add-note="handleAddNote"
-                @view-notes="handleViewNotes"
+                @manage-notes="handleManageNotes"
               />
             </div>
           </div>
@@ -213,9 +212,10 @@
                       </button>
                     </div>
                   </div>
-                  <p class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4">
-                    {{ highlightText(note.content, query) }}
-                  </p>
+                  <p
+                    class="text-sm text-gray-600 dark:text-gray-300 line-clamp-3 mb-4"
+                    v-html="highlightText(note.content, query)"
+                  ></p>
                   <div class="flex items-center justify-between text-xs text-gray-500">
                     <span>{{ formatDate(note.updated_at) }}</span>
                     <div v-if="note.files && note.files.length > 0" class="flex items-center gap-1">
@@ -248,6 +248,21 @@
         </div>
       </div>
     </div>
+
+    <!-- 文件预览模态框 -->
+    <FilePreview
+      :file="previewFile"
+      @close="closePreview"
+      @add-note="(file) => handleManageNotes(file, 'file')"
+    />
+
+    <!-- 统一笔记管理模态框 -->
+    <UnifiedNotes
+      :is-open="showNotes"
+      :item="notesItem"
+      :item-type="notesItemType"
+      @close="closeNotes"
+    />
   </div>
 </template>
 
@@ -257,6 +272,8 @@ import { useRoute, useRouter } from 'vue-router'
 import fileService from '../../api/fileService.js'
 import noteService from '../../api/noteService.js'
 import FileGrid from '../../components/FileGrid.vue'
+import FilePreview from '../../components/FilePreview.vue'
+import UnifiedNotes from '../../components/UnifiedNotes.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -268,6 +285,10 @@ const notes = ref([])
 const loading = ref(false)
 const searchTime = ref(0)
 const activeTab = ref('all')
+const previewFile = ref(null)
+const notesItem = ref(null)
+const notesItemType = ref('file')
+const showNotes = ref(false)
 
 // 计算属性
 const totalResults = computed(() => files.value.length + notes.value.length)
@@ -338,16 +359,23 @@ const handleDelete = async (id) => {
 }
 
 const handlePreview = (file) => {
-  // 实现文件预览
-  router.push({ path: '/files', query: { preview: file.id } })
+  previewFile.value = file
 }
 
-const handleAddNote = (file) => {
-  router.push({ path: '/notes', query: { file: file.id } })
+const closePreview = () => {
+  previewFile.value = null
 }
 
-const handleViewNotes = (file) => {
-  router.push({ path: '/notes', query: { file: file.id } })
+const handleManageNotes = (item, type) => {
+  notesItem.value = item
+  notesItemType.value = type
+  showNotes.value = true
+  previewFile.value = null
+}
+
+const closeNotes = () => {
+  showNotes.value = false
+  notesItem.value = null
 }
 
 const openNote = (note) => {

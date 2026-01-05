@@ -176,7 +176,14 @@ onMounted(async () => {
                 <span class="flex-1 text-xs text-base-content/40">{{
                   formatDate(note.updated_at)
                 }}</span>
-                <span class="badge">📁 {{ note.files.length }}</span>
+                <div class="flex gap-1">
+                  <span class="badge" v-if="note.folders && note.folders.length > 0"
+                    >📁 {{ note.folders.length }}</span
+                  >
+                  <span class="badge" v-if="note.files && note.files.length > 0"
+                    >📎 {{ note.files.length }}</span
+                  >
+                </div>
               </div>
             </div>
           </div>
@@ -255,6 +262,32 @@ onMounted(async () => {
           </div>
 
           <div class="flex-1 overflow-y-auto p-6">
+            <!-- 关联文件夹列表 -->
+            <div
+              v-if="selectedNote.folders && selectedNote.folders.length > 0"
+              class="border-t border-gray-200 dark:border-gray-700 mb-3 mt-3 pt-4"
+            >
+              <h3 class="text-sm font-medium mb-3 flex items-center gap-2">
+                <span>📁</span>
+                <span>关联的文件夹 ({{ selectedNote.folders.length }})</span>
+              </h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div
+                  v-for="folder in selectedNote.folders"
+                  :key="folder.id"
+                  class="flex items-center gap-3 p-3 bg-base-200 hover:bg-base-300 rounded-lg cursor-pointer transition-colors"
+                >
+                  <div class="text-2xl flex-shrink-0">📁</div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-medium truncate text-sm">{{ folder.name }}</p>
+                    <p class="text-xs text-base-content/60">
+                      {{ formatDate(folder.updated_at) }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- 关联文件列表 -->
             <div
               v-if="selectedNote.files && selectedNote.files.length > 0"
@@ -264,7 +297,7 @@ onMounted(async () => {
                 <span>📎</span>
                 <span>关联的文件 ({{ selectedNote.files.length }})</span>
               </h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                   v-for="file in selectedNote.files"
                   :key="file.id"
