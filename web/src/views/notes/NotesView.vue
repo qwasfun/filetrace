@@ -269,7 +269,7 @@ onMounted(async () => {
                 <span>📁</span>
                 <span>关联的文件夹 ({{ selectedNote.folders.length }})</span>
               </h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                   v-for="folder in selectedNote.folders"
                   :key="folder.id"
@@ -295,7 +295,7 @@ onMounted(async () => {
                 <span>📎</span>
                 <span>关联的文件 ({{ selectedNote.files.length }})</span>
               </h3>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div
                   v-for="file in selectedNote.files"
                   :key="file.id"

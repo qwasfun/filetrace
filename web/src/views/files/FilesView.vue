@@ -87,7 +87,7 @@ const loadMoveFolders = async () => {
       params.parent_id = moveTargetFolderId.value
     }
     const res = await folderService.getFolders(params)
-    moveFolders.value = res
+    moveFolders.value = res.data
   } catch (e) {
     console.error(e)
   } finally {
@@ -190,7 +190,7 @@ const loadData = async () => {
     files.value = filesRes.data || []
     totalFiles.value = filesRes.total || 0
     totalPages.value = filesRes.total_pages || 0
-    folders.value = foldersRes || []
+    folders.value = foldersRes.data || []
   } catch (error) {
     console.error('Failed to load data', error)
   } finally {

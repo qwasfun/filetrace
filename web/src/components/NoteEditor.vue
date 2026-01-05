@@ -1,6 +1,6 @@
 <template>
   <div
-    class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden h-full flex flex-col"
+    class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 h-full flex flex-col"
   >
     <!-- 头部工具栏 -->
     <div
@@ -36,18 +36,23 @@
     </div>
 
     <!-- 编辑区域 -->
-    <div class="p-6 flex-1 flex flex-col gap-6 overflow-hidden">
+    <div class="p-6 flex-1 flex flex-col gap-6 overflow-auto">
       <!-- 标题输入 -->
       <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           笔记标题
         </label>
-        <input
-          v-model="title"
-          type="text"
-          placeholder="输入笔记标题..."
-          class="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400"
-        />
+        <div class="flex items-center justify-between">
+          <input
+            v-model="title"
+            type="text"
+            placeholder="输入笔记标题..."
+            class="w-full px-4 py-3 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400"
+          />
+          <button @click="showSelector = true" class="btn btn-lg btn-primary ml-2 rounded-lg">
+            ＋ 关联
+          </button>
+        </div>
       </div>
 
       <!-- 关联文件夹 -->
@@ -56,9 +61,6 @@
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             关联的文件夹 ({{ attachedFolders.length }})
           </label>
-          <button @click="showFolderSelector = true" class="btn btn-xs btn-primary gap-2">
-            ＋ 关联文件夹
-          </button>
         </div>
         <div
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
@@ -95,16 +97,12 @@
           </div>
         </div>
       </div>
-
       <!-- 关联文件 -->
       <div>
         <div class="flex items-center justify-between mb-3">
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             关联的文件 ({{ attachedFiles.length }})
           </label>
-          <button @click="showFileSelector = true" class="btn btn-xs btn-primary gap-2">
-            ＋ 关联文件
-          </button>
         </div>
         <div
           class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
@@ -146,7 +144,7 @@
         </div>
       </div>
       <!-- 内容编辑 -->
-      <div class="flex-1 flex flex-col min-h-0">
+      <div class="flex-1 flex flex-col min-h-50">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           笔记内容
         </label>
@@ -168,20 +166,20 @@
       </div>
     </div>
 
-    <!-- 文件夹选择器模态框 -->
+    <!-- 统一选择器模态框 -->
     <div
-      v-if="showFolderSelector"
+      v-if="showSelector"
       class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      @click.self="showFolderSelector = false"
+      @click.self="showSelector = false"
     >
       <div
-        class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+        class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex flex-col"
       >
         <div
           class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
         >
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">选择要关联的文件夹</h3>
-          <button @click="showFolderSelector = false" class="btn btn-sm btn-circle btn-ghost">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">选择文件和文件夹</h3>
+          <button @click="showSelector = false" class="btn btn-sm btn-circle btn-ghost">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
@@ -192,47 +190,14 @@
             </svg>
           </button>
         </div>
-        <div class="p-4">
-          <FolderSelector
-            :exclude-ids="attachedFolders.map((f) => f.id)"
-            @select="handleAttachFolders"
-            @cancel="showFolderSelector = false"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- 文件选择器模态框 -->
-    <div
-      v-if="showFileSelector"
-      class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      @click.self="showFileSelector = false"
-    >
-      <div
-        class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
-      >
-        <div
-          class="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700"
-        >
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">选择要关联的文件</h3>
-          <button @click="showFileSelector = false" class="btn btn-sm btn-circle btn-ghost">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              ></path>
-            </svg>
-          </button>
-        </div>
-        <div class="p-4">
-          <FileSelector
-            :exclude-ids="attachedFiles.map((f) => f.id)"
-            @select="handleAttachFiles"
-            @cancel="showFileSelector = false"
-          />
-        </div>
+        <FileFolderSelector
+          :exclude-file-ids="attachedFiles.map((f) => f.id)"
+          :exclude-folder-ids="attachedFolders.map((f) => f.id)"
+          mode="both"
+          @select="handleAttachItems"
+          @cancel="showSelector = false"
+          class="p-4 flex-1 overflow-hidden"
+        />
       </div>
     </div>
   </div>
@@ -241,8 +206,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import noteService from '../api/noteService'
-import FileSelector from './FileSelector.vue'
-import FolderSelector from './FolderSelector.vue'
+import FileFolderSelector from './FileFolderSelector.vue'
 
 const props = defineProps({
   note: {
@@ -257,8 +221,7 @@ const title = ref('')
 const content = ref('')
 const attachedFiles = ref([])
 const attachedFolders = ref([])
-const showFileSelector = ref(false)
-const showFolderSelector = ref(false)
+const showSelector = ref(false)
 
 // 文件相关辅助函数
 const getFileIcon = (mimeType) => {
@@ -321,23 +284,33 @@ const handleSubmit = () => {
   })
 }
 
-const handleAttachFiles = async (fileIds) => {
-  showFileSelector.value = false
+const handleAttachItems = async ({ files: fileIds, folders: folderIds }) => {
+  showSelector.value = false
 
   if (!props.note || !props.note.id) {
-    // 新建笔记时，先提示用户保存
-    alert('请先保存笔记，然后再关联文件')
+    alert('请先保存笔记，然后再关联文件和文件夹')
     return
   }
 
   try {
-    await noteService.attachFiles(props.note.id, fileIds)
-    // 重新获取笔记信息以更新关联的文件列表
+    // 同时关联文件和文件夹
+    const promises = []
+    if (fileIds.length > 0) {
+      promises.push(noteService.attachFiles(props.note.id, fileIds))
+    }
+    if (folderIds.length > 0) {
+      promises.push(noteService.attachFolders(props.note.id, folderIds))
+    }
+
+    await Promise.all(promises)
+
+    // 重新获取笔记信息以更新关联列表
     const response = await noteService.getNote(props.note.id)
     attachedFiles.value = response.files || []
+    attachedFolders.value = response.folders || []
   } catch (error) {
-    console.error('Failed to attach files', error)
-    alert('关联文件失败')
+    console.error('Failed to attach items', error)
+    alert('关联失败')
   }
 }
 
@@ -352,24 +325,6 @@ const handleDetachFile = async (fileId) => {
   } catch (error) {
     console.error('Failed to detach file', error)
     alert('移除文件关联失败')
-  }
-}
-
-const handleAttachFolders = async (folderIds) => {
-  showFolderSelector.value = false
-
-  if (!props.note || !props.note.id) {
-    alert('请先保存笔记，然后再关联文件夹')
-    return
-  }
-
-  try {
-    await noteService.attachFolders(props.note.id, folderIds)
-    const response = await noteService.getNote(props.note.id)
-    attachedFolders.value = response.folders || []
-  } catch (error) {
-    console.error('Failed to attach folders', error)
-    alert('关联文件夹失败')
   }
 }
 
