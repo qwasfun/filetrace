@@ -92,7 +92,7 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
     <!-- Folders Section -->
     <div v-if="folders.length > 0" class="mb-8">
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4 flex items-center">
-        <span class="mr-2">📁</span> Folders
+        <span class="mr-2">📁</span> Folders ({{ folders.length }})
       </h3>
       <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
         <div
@@ -177,7 +177,7 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
         v-if="files.length > 0"
         class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4 flex items-center"
       >
-        <span class="mr-2">📄</span> Files
+        <span class="mr-2">📄</span> Files ({{ files.length }})
       </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div

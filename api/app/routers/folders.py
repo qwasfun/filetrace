@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_session
@@ -39,22 +40,59 @@ async def create_folder(
     return new_folder
 
 
-@router.get("/", response_model=List[FolderResponse])
+@router.get("/")
 async def list_folders(
     parent_id: Optional[str] = None,
+    q: Optional[str] = None,
+    page: int = Query(1, ge=1, description="页码，从1开始"),
+    page_size: int = Query(100, ge=1, le=100, description="每页条数，默认100"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    """获取当前用户的文件夹列表（分页）"""
+
+    # 计算偏移量
+    offset = (page - 1) * page_size
+
     stmt = select(Folder).where(
         Folder.user_id == current_user.id, Folder.is_deleted == 0
     )
+
     if parent_id:
         stmt = stmt.where(Folder.parent_id == parent_id)
     else:
         stmt = stmt.where(Folder.parent_id.is_(None))
 
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    if q:
+        stmt = stmt.where(Folder.name.ilike(f"%{q}%"))
+
+    query = stmt.offset(offset).limit(page_size).order_by(Folder.created_at.desc())
+
+    # 获取总数
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 获取分页数据
+    result = await db.execute(query)
+    folders = result.scalars().all()
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+        "data": [
+            {
+                "id": f.id,
+                "name": f.name,
+                "parent_id": f.parent_id,
+                "created_at": f.created_at,
+                "updated_at": f.updated_at,
+            }
+            for f in folders
+        ],
+    }
 
 
 @router.get("/{folder_id}", response_model=FolderResponse)
