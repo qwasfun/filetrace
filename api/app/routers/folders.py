@@ -45,7 +45,7 @@ async def list_folders(
     parent_id: Optional[str] = None,
     q: Optional[str] = None,
     page: int = Query(1, ge=1, description="页码，从1开始"),
-    page_size: int = Query(50, ge=1, le=100, description="每页条数，默认50"),
+    page_size: int = Query(100, ge=1, le=100, description="每页条数，默认100"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
