@@ -3,8 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import FileUpload from '../../components/FileUpload.vue'
 import FileGrid from '../../components/FileGrid.vue'
 import FilePreview from '../../components/FilePreview.vue'
-import FileNotes from '../../components/FileNotes.vue'
-import FolderNotes from '../../components/FolderNotes.vue'
+import UnifiedNotes from '../../components/UnifiedNotes.vue'
 import fileService from '../../api/fileService.js'
 import folderService from '../../api/folderService.js'
 
@@ -23,10 +22,9 @@ const newFolderName = ref('')
 const renameFolderName = ref('')
 const renameFileName = ref('')
 const previewFile = ref(null)
-const notesFile = ref(null)
-const notesFolder = ref(null)
+const notesItem = ref(null)
+const notesItemType = ref('file')
 const showNotes = ref(false)
-const showFolderNotes = ref(false)
 const searchQuery = ref('')
 const filterType = ref('all')
 
@@ -289,15 +287,11 @@ const handlePreview = (file) => {
   previewFile.value = file
 }
 
-const handleAddNote = (file) => {
-  notesFile.value = file
+const handleManageNotes = (item, type) => {
+  notesItem.value = item
+  notesItemType.value = type
   showNotes.value = true
   previewFile.value = null // 关闭预览
-}
-
-const handleViewNotes = (file) => {
-  notesFile.value = file
-  showNotes.value = true
 }
 
 const closePreview = () => {
@@ -306,27 +300,12 @@ const closePreview = () => {
 
 const closeNotes = () => {
   showNotes.value = false
-  notesFile.value = null
+  notesItem.value = null
 }
 
 const handleNoteCreated = () => {
   // 可以在这里刷新文件列表，更新笔记计数
   loadData()
-}
-
-const handleAddFolderNote = (folder) => {
-  notesFolder.value = folder
-  showFolderNotes.value = true
-}
-
-const handleViewFolderNotes = (folder) => {
-  notesFolder.value = folder
-  showFolderNotes.value = true
-}
-
-const closeFolderNotes = () => {
-  showFolderNotes.value = false
-  notesFolder.value = null
 }
 
 onMounted(() => {
@@ -602,14 +581,11 @@ onMounted(() => {
             @selection-change="handleSelectionChange"
             @delete-file="handleDelete"
             @preview-file="handlePreview"
-            @add-note="handleAddNote"
-            @view-notes="handleViewNotes"
+            @manage-notes="handleManageNotes"
             @open-folder="openFolder"
             @delete-folder="deleteFolder"
             @edit-folder="openRenameFolderModal"
             @rename-file="handleRenameFile"
-            @add-folder-note="handleAddFolderNote"
-            @view-folder-notes="handleViewFolderNotes"
           />
 
           <!-- Pagination -->
@@ -637,21 +613,18 @@ onMounted(() => {
     </div>
 
     <!-- 文件预览模态框 -->
-    <FilePreview :file="previewFile" @close="closePreview" @add-note="handleAddNote" />
-
-    <!-- 文件笔记模态框 -->
-    <FileNotes
-      :is-open="showNotes"
-      :file="notesFile"
-      @close="closeNotes"
-      @note-created="handleNoteCreated"
+    <FilePreview
+      :file="previewFile"
+      @close="closePreview"
+      @add-note="(file) => handleManageNotes(file, 'file')"
     />
 
-    <!-- 文件夹笔记模态框 -->
-    <FolderNotes
-      :is-open="showFolderNotes"
-      :folder="notesFolder"
-      @close="closeFolderNotes"
+    <!-- 统一笔记管理模态框 -->
+    <UnifiedNotes
+      :is-open="showNotes"
+      :item="notesItem"
+      :item-type="notesItemType"
+      @close="closeNotes"
       @note-created="handleNoteCreated"
     />
 

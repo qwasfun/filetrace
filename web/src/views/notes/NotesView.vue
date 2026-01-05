@@ -180,7 +180,9 @@ onMounted(async () => {
                   <span class="badge" v-if="note.folders && note.folders.length > 0"
                     >📁 {{ note.folders.length }}</span
                   >
-                  <span class="badge">📎 {{ note.files.length }}</span>
+                  <span class="badge" v-if="note.files && note.files.length > 0"
+                    >📎 {{ note.files.length }}</span
+                  >
                 </div>
               </div>
             </div>

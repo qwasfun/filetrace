@@ -30,15 +30,12 @@ const props = defineProps({
 const emit = defineEmits([
   'delete-file',
   'preview-file',
-  'add-note',
-  'view-notes',
+  'manage-notes',
   'open-folder',
   'delete-folder',
   'edit-folder',
   'rename-file',
   'selection-change',
-  'add-folder-note',
-  'view-folder-notes',
 ])
 
 const localSelectedFiles = ref([...props.selectedFiles])
@@ -138,10 +135,10 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                 {{ folder.name }}
               </h3>
               <button
-                @click.stop="$emit('add-folder-note', folder)"
+                @click.stop="$emit('manage-notes', folder, 'folder')"
                 class="btn btn-xs btn-outline text-gray-400 hover:text-blue-500"
                 :class="{ 'text-blue-500': folder.notes_count > 0 }"
-                :title="`查看笔记 (${folder.notes_count || 0})`"
+                :title="`管理笔记 (${folder.notes_count || 0})`"
               >
                 📝
                 <span v-if="folder.notes_count > 0" class="text-xs">{{ folder.notes_count }}</span>
@@ -259,9 +256,9 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                   </svg>
                 </button>
                 <button
-                  @click.stop="$emit('add-note', file)"
+                  @click.stop="$emit('manage-notes', file, 'file')"
                   class="btn btn-sm btn-circle bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-lg"
-                  title="添加笔记"
+                  title="管理笔记"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -286,10 +283,10 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                 {{ file.filename }}
               </h3>
               <button
-                @click="$emit('view-notes', file)"
+                @click="$emit('manage-notes', file, 'file')"
                 class="btn btn-xs btn-outline text-gray-400 hover:text-blue-500"
                 :class="{ 'text-blue-500': file.notes_count > 0 }"
-                :title="`查看笔记 (${file.notes_count || 0})`"
+                :title="`管理笔记 (${file.notes_count || 0})`"
               >
                 📝
                 <span v-if="file.notes_count > 0" class="text-xs">{{ file.notes_count }}</span>

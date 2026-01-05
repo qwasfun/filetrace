@@ -239,6 +239,9 @@ async def get_folder_notes(
     if not folder:
         raise HTTPException(status_code=404, detail="Folder not found")
 
+    # 按 updated_at 降序排列笔记
+    sorted_notes = sorted(folder.notes, key=lambda note: note.updated_at, reverse=True)
+
     return {
         "folder_id": folder.id,
         "folder_name": folder.name,
@@ -251,7 +254,7 @@ async def get_folder_notes(
                 "created_at": note.created_at,
                 "updated_at": note.updated_at,
             }
-            for note in folder.notes
+            for note in sorted_notes
         ],
     }
 
