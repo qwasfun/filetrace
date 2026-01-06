@@ -20,7 +20,7 @@ from app.schemas import (
     StorageBackendType,
     StorageBackendUpdate,
 )
-from app.services.security import get_current_user
+from app.services.security import get_current_admin_user, get_current_user
 
 router = APIRouter(prefix="/api/v1/storage-backends", tags=["storage-backends"])
 
@@ -55,7 +55,7 @@ def _backend_to_response(backend: StorageBackendConfig) -> StorageBackendRespons
 async def create_storage_backend(
     backend_data: StorageBackendCreate,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """创建新的存储后端配置"""
     # 检查名称是否已存在
@@ -99,7 +99,7 @@ async def create_storage_backend(
 @router.get("", response_model=List[StorageBackendResponse])
 async def list_storage_backends(
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """获取所有存储后端配置"""
     stmt = select(StorageBackendConfig).order_by(
@@ -115,7 +115,7 @@ async def list_storage_backends(
 async def get_storage_backend(
     backend_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """获取指定存储后端配置"""
     stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
@@ -135,7 +135,7 @@ async def update_storage_backend(
     backend_id: str,
     backend_data: StorageBackendUpdate,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """更新存储后端配置"""
     stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
@@ -213,7 +213,7 @@ async def update_storage_backend(
 async def delete_storage_backend(
     backend_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """删除存储后端配置"""
     stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
@@ -242,7 +242,7 @@ async def delete_storage_backend(
 async def set_default_backend(
     backend_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """将指定后端设置为默认"""
     stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
@@ -274,7 +274,7 @@ async def set_default_backend(
 async def test_storage_backend(
     backend_id: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """测试存储后端连接"""
     stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
@@ -325,7 +325,7 @@ async def test_storage_backend(
 @router.get("/export/config")
 async def export_storage_config(
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """导出所有存储后端配置为 JSON 格式"""
     stmt = select(StorageBackendConfig).order_by(StorageBackendConfig.created_at)
@@ -361,7 +361,7 @@ async def import_storage_config(
     file: UploadFile = File(...),
     replace_existing: bool = False,
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
     """从 JSON 文件导入存储后端配置
 

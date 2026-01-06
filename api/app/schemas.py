@@ -10,6 +10,11 @@ class Visibility(str, Enum):
     PUBLIC = "PUBLIC"
 
 
+class UserRole(str, Enum):
+    ADMIN = "admin"
+    USER = "user"
+
+
 class NoteCreate(BaseModel):
     title: str
     content: str
@@ -140,6 +145,7 @@ class UserResponse(BaseModel):
     id: str
     username: str
     nickname: str | None = None
+    role: str = "user"
     created_at: datetime
     updated_at: datetime
 

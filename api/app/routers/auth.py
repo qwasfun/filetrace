@@ -34,8 +34,17 @@ async def register(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="username is exist"
         )
+
+    # 检查是否为第一位用户
+    count_stmt = select(User)
+    count_result = await session.execute(count_stmt)
+    user_count = len(count_result.scalars().all())
+
+    # 第一位用户自动成为管理员
+    user_role = "admin" if user_count == 0 else "user"
+
     hashed_password = get_password_hash(password)
-    user = User(username=username, password=hashed_password)
+    user = User(username=username, password=hashed_password, role=user_role)
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -55,7 +64,7 @@ async def register(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
@@ -91,13 +100,17 @@ async def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
 @router.get("/me")
 async def read_current_user(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "username": current_user.username}
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "role": current_user.role,
+    }
 
 
 @router.post("/refresh")
@@ -144,7 +157,7 @@ async def refresh_token(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
