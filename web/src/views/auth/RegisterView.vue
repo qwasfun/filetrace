@@ -37,7 +37,7 @@ const submit = async () => {
     router.push('/')
   } catch (err) {
     console.error(err)
-    errorMsg.value = '注册失败，请稍后重试'
+    errorMsg.value = err.response?.data?.detail || '注册失败，请稍后重试'
   } finally {
     loading.value = false
   }

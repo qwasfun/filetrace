@@ -32,7 +32,7 @@ async def register(
     user = result.scalar_one_or_none()
     if user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="username is exist"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已经存在"
         )
 
     # 检查是否为第一位用户
@@ -82,7 +82,7 @@ async def login(
     if not user or not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="username or password is incorrect",
+            detail="用户名或密码错误",
         )
     access_token = create_access_token(subject=user.username)
     refresh_token = create_refresh_token(subject=user.username)
@@ -121,25 +121,25 @@ async def refresh_token(
 ):
     if not refresh_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少 refresh token"
         )
     try:
         payload = decode_token(refresh_token)
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="无效 refresh token"
             )
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="无效 refresh token"
         )
     stmt = select(User).where(User.username == username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在"
         )
     access_token = create_access_token(subject=user.username)
     new_refresh_token = create_refresh_token(subject=user.username)
@@ -164,4 +164,4 @@ async def refresh_token(
 @router.post("/logout")
 async def logout(response: Response):
     response.delete_cookie(key="refresh_token")
-    return {"message": "Logged out successfully"}
+    return {"message": "退出成功"}

@@ -32,7 +32,7 @@ const submit = async () => {
     router.push('/')
   } catch (err) {
     console.error(err)
-    errorMsg.value = '登录失败，请检查用户名或密码'
+    errorMsg.value = err.response?.data?.detail || '登录失败，请检查用户名或密码'
   } finally {
     loading.value = false
   }
