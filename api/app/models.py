@@ -95,6 +95,9 @@ class File(Base):
     )
     user_id = Column(String(36), ForeignKey("users.id"))
     folder_id = Column(String(36), ForeignKey("folders.id"), nullable=True)
+    storage_backend_id = Column(
+        String(36), ForeignKey("storage_backends.id"), nullable=True
+    )
     filename: Mapped[str] = mapped_column(String, index=True)
     storage_path: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     mime_type: Mapped[str] = mapped_column(String, nullable=False)
@@ -157,8 +160,34 @@ class Note(Base):
     files: Mapped[List["File"]] = relationship(
         secondary=file_note_association, back_populates="notes", lazy="selectin"
     )
-
     # Relationship to Folders
     folders: Mapped[List["Folder"]] = relationship(
         secondary=folder_note_association, back_populates="notes", lazy="selectin"
+    )
+
+
+class StorageBackendConfig(Base):
+    """存储后端配置"""
+
+    __tablename__ = "storage_backends"
+
+    id = Column(
+        String(36), primary_key=True, index=True, default=lambda: str(uuid.uuid4())
+    )
+    name: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
+    backend_type: Mapped[str] = mapped_column(String, nullable=False)  # local or s3
+    is_active: Mapped[bool] = mapped_column(Integer, default=0)  # 0: False, 1: True
+    is_default: Mapped[bool] = mapped_column(Integer, default=0)  # 0: False, 1: True
+
+    # 配置参数 (JSON格式存储)
+    config_json: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # 元数据
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+    created_by: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id"), nullable=True
     )

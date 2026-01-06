@@ -1,132 +1,180 @@
 """
 文件存储服务
-支持本地存储和 S3 存储
+支持本地存储和 S3 存储，支持从数据库动态加载配置
 """
 
+import json
 import os
 from typing import Tuple
 
 from fastapi import UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from .storage_backend import LocalStorageBackend, S3StorageBackend, StorageBackend
 
 
-def get_storage_backend() -> StorageBackend:
+def _get_default_local_storage() -> StorageBackend:
     """
-    根据环境变量获取存储后端
+    获取默认本地存储后端（回退方案）
 
     Returns:
-        StorageBackend 实例
+        LocalStorageBackend 实例
     """
-    storage_type = os.getenv("STORAGE_TYPE", "local").lower()
+    return LocalStorageBackend(base_dir="data/files")
 
-    if storage_type == "s3":
-        # S3 存储配置
-        return S3StorageBackend(
-            bucket_name=os.getenv("S3_BUCKET_NAME", ""),
-            access_key=os.getenv("S3_ACCESS_KEY", ""),
-            secret_key=os.getenv("S3_SECRET_KEY", ""),
-            endpoint_url=os.getenv("S3_ENDPOINT_URL") or None,
-            region_name=os.getenv("S3_REGION_NAME", "us-east-1"),
-            public_url=os.getenv("S3_PUBLIC_URL") or None,
+
+async def get_storage_backend_by_id(
+    session: AsyncSession, backend_id: str | None = None
+) -> StorageBackend:
+    """
+    根据ID获取存储后端 (异步)
+    如果ID为None，返回默认本地存储后端（兼容旧数据）
+    """
+    if not backend_id:
+        return _get_default_local_storage()
+
+    try:
+        # 延迟导入以避免循环依赖
+        from app.models import StorageBackendConfig
+
+        stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
+        result = await session.execute(stmt)
+        backend_config = result.scalar_one_or_none()
+
+        if backend_config:
+            config = json.loads(backend_config.config_json)
+
+            if backend_config.backend_type == "s3":
+                return S3StorageBackend(**config)
+            elif backend_config.backend_type == "local":
+                return LocalStorageBackend(**config)
+    except Exception as e:
+        print(f"从数据库加载存储后端配置失败: {e}")
+
+    # 如果找不到或出错，回退到默认本地存储
+    return _get_default_local_storage()
+
+
+async def get_default_storage_backend(
+    session: AsyncSession,
+) -> Tuple[StorageBackend, str | None]:
+    """
+    获取默认存储后端 (异步)
+
+    Returns:
+        (StorageBackend实例, backend_id)
+    """
+    try:
+        from app.models import StorageBackendConfig
+
+        stmt = select(StorageBackendConfig).where(
+            StorageBackendConfig.is_default == 1,
+            StorageBackendConfig.is_active == 1,
         )
-    else:
-        # 默认使用本地存储
-        base_dir = os.getenv("LOCAL_STORAGE_DIR", "data/files")
-        return LocalStorageBackend(base_dir=base_dir)
+        result = await session.execute(stmt)
+        backend_config = result.scalar_one_or_none()
+
+        if backend_config:
+            config = json.loads(backend_config.config_json)
+            backend = None
+
+            if backend_config.backend_type == "s3":
+                backend = S3StorageBackend(**config)
+            elif backend_config.backend_type == "local":
+                backend = LocalStorageBackend(**config)
+
+            if backend:
+                return backend, str(backend_config.id)
+    except Exception as e:
+        print(f"从数据库加载默认存储后端配置失败: {e}")
+
+    # 回退到默认本地存储
+    return _get_default_local_storage(), None
 
 
-# 全局存储后端实例
-_storage_backend = None
-
-
-def get_storage() -> StorageBackend:
-    """获取全局存储后端实例（单例模式）"""
-    global _storage_backend
-    if _storage_backend is None:
-        _storage_backend = get_storage_backend()
-    return _storage_backend
-
-
-def save_file(file: UploadFile, user_id: str = None) -> Tuple[str, int, dict]:
+def save_file(
+    file: UploadFile, backend: StorageBackend, user_id: str | None = None
+) -> Tuple[str, int, dict]:
     """
-    保存文件
+    保存文件 (同步，需在线程池运行)
 
     Args:
         file: 上传的文件对象
+        backend: 存储后端实例
         user_id: 用户ID（可选）
 
     Returns:
-        Tuple[storage_path, mime_type, size, file_type_info]
-        file_type_info: {
-            'category': 'text' | 'document' | 'image' | 'video' | 'binary',
-            'mime_type': str,
-            'confidence': 'high' | 'medium' | 'low'
-        }
+        Tuple[storage_path, size, file_type_info]
     """
-    storage = get_storage()
-    return storage.save(file, user_id)
+    return backend.save(file, user_id)
 
 
-def delete_file(storage_path: str) -> bool:
+def delete_file(storage_path: str, backend: StorageBackend) -> bool:
     """
     删除文件
 
     Args:
         storage_path: 文件存储路径
+        backend: 存储后端实例
 
     Returns:
         是否删除成功
     """
-    storage = get_storage()
-    return storage.delete(storage_path)
+    return backend.delete(storage_path)
 
 
-def file_exists(storage_path: str) -> bool:
+def file_exists(storage_path: str, backend: StorageBackend) -> bool:
     """
     检查文件是否存在
 
     Args:
         storage_path: 文件存储路径
+        backend: 存储后端实例
 
     Returns:
         文件是否存在
     """
-    storage = get_storage()
-    return storage.exists(storage_path)
+    return backend.exists(storage_path)
 
 
 def get_download_info(
-    storage_path: str, filename: str = None, disposition: str = "attachment"
+    storage_path: str,
+    backend: StorageBackend,
+    filename: str | None = None,
+    disposition: str = "attachment",
 ) -> dict:
     """
     获取文件下载信息
 
     Args:
         storage_path: 文件存储路径
+        backend: 存储后端实例
         filename: 文件名（可选）
         disposition: Content-Disposition 类型 (attachment 或 inline)
 
     Returns:
         包含下载所需信息的字典
     """
-    storage = get_storage()
-    return storage.get_download_info(storage_path, filename, disposition)
+    return backend.get_download_info(storage_path, filename, disposition)
 
 
 def get_public_url(
-    storage_path: str, filename: str = None, disposition: str = "attachment"
-) -> str:
+    storage_path: str,
+    backend: StorageBackend,
+    filename: str | None = None,
+    disposition: str = "attachment",
+) -> str | None:
     """
     获取文件的公共 URL（签名后）
 
     Args:
         storage_path: 文件存储路径
+        backend: 存储后端实例
         filename: 文件名（可选，用于设置 Content-Disposition）
         disposition: Content-Disposition 类型 (attachment 或 inline)
 
     Returns:
         公共 URL 或 None
     """
-    storage = get_storage()
-    return storage.get_public_url(storage_path, filename, disposition)
+    return backend.get_public_url(storage_path, filename, disposition)

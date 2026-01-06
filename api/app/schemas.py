@@ -28,6 +28,7 @@ class FileResponseModel(BaseModel):
     folder_id: str | None = None
     filename: str
     storage_path: str
+    storage_backend_id: str | None = None
     mime_type: str
     size: int
     file_type: str | None = None  # text, document, image, video, binary
@@ -141,6 +142,66 @@ class UserResponse(BaseModel):
     nickname: str | None = None
     created_at: datetime
     updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StorageBackendType(str, Enum):
+    LOCAL = "local"
+    S3 = "s3"
+
+
+class LocalStorageConfig(BaseModel):
+    """本地存储配置"""
+
+    base_dir: str = "data/files"
+
+
+class S3StorageConfig(BaseModel):
+    """S3存储配置"""
+
+    bucket_name: str
+    access_key: str
+    secret_key: str
+    endpoint_url: str | None = None
+    region_name: str = "us-east-1"
+    public_url: str | None = None
+
+
+class StorageBackendCreate(BaseModel):
+    """创建存储后端"""
+
+    name: str
+    backend_type: StorageBackendType
+    config: LocalStorageConfig | S3StorageConfig
+    description: str | None = None
+    is_default: bool = False
+
+
+class StorageBackendUpdate(BaseModel):
+    """更新存储后端"""
+
+    name: str | None = None
+    config: LocalStorageConfig | S3StorageConfig | None = None
+    description: str | None = None
+    is_active: bool | None = None
+    is_default: bool | None = None
+
+
+class StorageBackendResponse(BaseModel):
+    """存储后端响应"""
+
+    id: str
+    name: str
+    backend_type: str
+    is_active: bool
+    is_default: bool
+    config: dict
+    description: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    created_by: str | None = None
 
     class Config:
         from_attributes = True
