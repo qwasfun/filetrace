@@ -1,8 +1,8 @@
 """add_storage_backends_table
 
-Revision ID: c8f9d5e23a1b
-Revises: ebae89491d40
-Create Date: 2025-12-31 00:00:00.000000
+Revision ID: 58ec203bd381
+Revises: 4fc0083bcb6d
+Create Date: 2026-01-06 12:44:31.250045
 
 """
 
@@ -13,8 +13,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = "c8f9d5e23a1b"
-down_revision: Union[str, Sequence[str], None] = "ebae89491d40"
+revision: str = "58ec203bd381"
+down_revision: Union[str, Sequence[str], None] = "4fc0083bcb6d"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -45,10 +45,22 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_storage_backends_name"), "storage_backends", ["name"], unique=True
     )
+    op.add_column(
+        "files", sa.Column("storage_backend_id", sa.String(length=36), nullable=True)
+    )
+    op.create_foreign_key(
+        "fk_files_storage_backend_id",
+        "files",
+        "storage_backends",
+        ["storage_backend_id"],
+        ["id"],
+    )
 
 
 def downgrade() -> None:
     """删除存储后端配置表"""
+    op.drop_constraint("fk_files_storage_backend_id", "files", type_="foreignkey")
+    op.drop_column("files", "storage_backend_id")
     op.drop_index(op.f("ix_storage_backends_name"), table_name="storage_backends")
     op.drop_index(op.f("ix_storage_backends_id"), table_name="storage_backends")
     op.drop_table("storage_backends")
