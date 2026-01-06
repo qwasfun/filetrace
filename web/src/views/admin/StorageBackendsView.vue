@@ -254,7 +254,7 @@
             <label class="label"><span class="label-text">描述</span></label>
             <textarea
               v-model="form.description"
-              class="textarea textarea-bordered h-20"
+              class="textarea textarea-bordered h-20 w-full"
               placeholder="可选描述信息..."
             ></textarea>
           </div>
