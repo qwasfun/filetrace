@@ -30,8 +30,7 @@ const props = defineProps({
 const emit = defineEmits([
   'delete-file',
   'preview-file',
-  'add-note',
-  'view-notes',
+  'manage-notes',
   'open-folder',
   'delete-folder',
   'edit-folder',
@@ -92,13 +91,14 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
     <!-- Folders Section -->
     <div v-if="folders.length > 0" class="mb-8">
       <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4 flex items-center">
-        <span class="mr-2">📁</span> Folders
+        <span class="mr-2">📁</span> Folders ({{ folders.length }})
       </h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div
           v-for="folder in folders"
           :key="folder.id"
-          class="relative group bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-all cursor-pointer"
+          class="relative group bg-white dark:bg-gray-800 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 dark:border-gray-700"
           @click="$emit('open-folder', folder)"
           @mouseenter="hoveredFolder = folder.id"
           @mouseleave="hoveredFolder = null"
@@ -111,61 +111,74 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
               class="checkbox checkbox-sm checkbox-primary"
             />
           </div>
-          <div class="flex flex-col items-center p-2">
-            <div class="text-5xl mb-3 text-yellow-400">📁</div>
-            <div
-              class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate w-full text-center"
-            >
-              {{ folder.name }}
+          <div
+            class="relative h-48 bg-linear-to-br from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 flex items-center justify-center overflow-hidden cursor-pointer group-hover:scale-105 transition-transform duration-300"
+            @click.stop="$emit('open-folder', folder)"
+          >
+            <!-- 文件夹图标 -->
+            <div class="flex flex-col items-center justify-center p-4">
+              <div
+                class="w-16 h-16 rounded-full flex items-center justify-center text-yellow-400 text-5xl"
+              >
+                📁
+              </div>
             </div>
           </div>
 
-          <!-- Folder Actions -->
-          <div
-            v-if="hoveredFolder === folder.id"
-            class="absolute top-2 right-2 flex space-x-1"
-            @click.stop
-          >
-            <button
-              @click="$emit('edit-folder', folder)"
-              class="p-1.5 bg-white dark:bg-gray-700 rounded-full shadow hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
-              title="Rename"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3 w-3"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+          <!-- 文件信息 -->
+          <div class="p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3
+                class="font-medium text-gray-900 dark:text-gray-100 text-sm leading-tight line-clamp-2 flex-1 mr-2"
+                :title="folder.name"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
-            </button>
-            <button
-              @click="$emit('delete-folder', folder)"
-              class="p-1.5 bg-white dark:bg-gray-700 rounded-full shadow hover:bg-red-50 dark:hover:bg-red-900/30 text-red-500"
-              title="Delete"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-3 w-3"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+                {{ folder.name }}
+              </h3>
+              <button
+                @click.stop="$emit('manage-notes', folder, 'folder')"
+                class="btn btn-xs btn-outline text-gray-400 hover:text-blue-500"
+                :class="{ 'text-blue-500': folder.notes_count > 0 }"
+                :title="`管理笔记 (${folder.notes_count || 0})`"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+                📝
+                <span v-if="folder.notes_count > 0" class="text-xs">{{ folder.notes_count }}</span>
+              </button>
+            </div>
+            <!-- 操作按钮 -->
+            <div
+              class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 gap-2 pt-2 border-t border-gray-100 dark:border-gray-700"
+            >
+              <div class="flex-1">
+                <button
+                  class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
+                  @click.stop="$emit('edit-folder', folder)"
+                  title="重命名"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    ></path>
+                  </svg>
+                </button>
+                <button
+                  class="btn btn-xs btn-ghost text-red-500 hover:text-red-600"
+                  @click.stop="$emit('delete-folder', folder)"
+                >
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+              <span>{{ formatDate(folder.created_at) }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -173,11 +186,8 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
 
     <!-- Files Section -->
     <div v-if="files.length > 0">
-      <h3
-        v-if="files.length > 0"
-        class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4 flex items-center"
-      >
-        <span class="mr-2">📄</span> Files
+      <h3 class="text-lg font-medium text-gray-700 dark:text-gray-200 mb-4 flex items-center">
+        <span class="mr-2">📄</span> Files ({{ files.length }})
       </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div
@@ -210,7 +220,7 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
             <!-- 文件类型图标 -->
             <div v-else class="flex flex-col items-center justify-center p-4">
               <div
-                :class="`w-16 h-16 rounded-full flex items-center justify-center text-2xl ${getFileTypeColor(file.mime_type)}`"
+                :class="`w-24 h-24 rounded-full flex items-center justify-center text-5xl ${getFileTypeColor(file.mime_type)}`"
               >
                 {{ getFileIcon(file.mime_type) }}
               </div>
@@ -246,9 +256,9 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                   </svg>
                 </button>
                 <button
-                  @click.stop="$emit('add-note', file)"
+                  @click.stop="$emit('manage-notes', file, 'file')"
                   class="btn btn-sm btn-circle bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-lg"
-                  title="添加笔记"
+                  title="管理笔记"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -273,10 +283,10 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                 {{ file.filename }}
               </h3>
               <button
-                @click="$emit('view-notes', file)"
+                @click="$emit('manage-notes', file, 'file')"
                 class="btn btn-xs btn-outline text-gray-400 hover:text-blue-500"
                 :class="{ 'text-blue-500': file.notes_count > 0 }"
-                :title="`查看笔记 (${file.notes_count || 0})`"
+                :title="`管理笔记 (${file.notes_count || 0})`"
               >
                 📝
                 <span v-if="file.notes_count > 0" class="text-xs">{{ file.notes_count }}</span>
@@ -290,22 +300,6 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
 
             <!-- 操作按钮 -->
             <div class="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-              <a
-                :href="`${file.download_url}`"
-                target="_blank"
-                download
-                class="btn btn-xs btn-ghost flex-1 text-gray-600 hover:text-blue-600"
-              >
-                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  ></path>
-                </svg>
-                下载
-              </a>
               <button
                 class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
                 @click="$emit('rename-file', file)"
@@ -333,6 +327,22 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                   ></path>
                 </svg>
               </button>
+              <a
+                :href="`${file.download_url}`"
+                target="_blank"
+                download
+                class="btn btn-xs btn-ghost flex-1 text-gray-600 hover:text-blue-600"
+              >
+                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                下载
+              </a>
             </div>
           </div>
         </div>

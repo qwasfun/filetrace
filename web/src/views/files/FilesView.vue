@@ -3,7 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import FileUpload from '../../components/FileUpload.vue'
 import FileGrid from '../../components/FileGrid.vue'
 import FilePreview from '../../components/FilePreview.vue'
-import FileNotes from '../../components/FileNotes.vue'
+import UnifiedNotes from '../../components/UnifiedNotes.vue'
 import fileService from '../../api/fileService.js'
 import folderService from '../../api/folderService.js'
 
@@ -22,7 +22,8 @@ const newFolderName = ref('')
 const renameFolderName = ref('')
 const renameFileName = ref('')
 const previewFile = ref(null)
-const notesFile = ref(null)
+const notesItem = ref(null)
+const notesItemType = ref('file')
 const showNotes = ref(false)
 const searchQuery = ref('')
 const filterType = ref('all')
@@ -84,7 +85,7 @@ const loadMoveFolders = async () => {
       params.parent_id = moveTargetFolderId.value
     }
     const res = await folderService.getFolders(params)
-    moveFolders.value = res
+    moveFolders.value = res.data
   } catch (e) {
     console.error(e)
   } finally {
@@ -187,7 +188,7 @@ const loadData = async () => {
     files.value = filesRes.data || []
     totalFiles.value = filesRes.total || 0
     totalPages.value = filesRes.total_pages || 0
-    folders.value = foldersRes || []
+    folders.value = foldersRes.data || []
   } catch (error) {
     console.error('Failed to load data', error)
   } finally {
@@ -286,15 +287,11 @@ const handlePreview = (file) => {
   previewFile.value = file
 }
 
-const handleAddNote = (file) => {
-  notesFile.value = file
+const handleManageNotes = (item, type) => {
+  notesItem.value = item
+  notesItemType.value = type
   showNotes.value = true
   previewFile.value = null // 关闭预览
-}
-
-const handleViewNotes = (file) => {
-  notesFile.value = file
-  showNotes.value = true
 }
 
 const closePreview = () => {
@@ -303,7 +300,7 @@ const closePreview = () => {
 
 const closeNotes = () => {
   showNotes.value = false
-  notesFile.value = null
+  notesItem.value = null
 }
 
 const handleNoteCreated = () => {
@@ -584,8 +581,7 @@ onMounted(() => {
             @selection-change="handleSelectionChange"
             @delete-file="handleDelete"
             @preview-file="handlePreview"
-            @add-note="handleAddNote"
-            @view-notes="handleViewNotes"
+            @manage-notes="handleManageNotes"
             @open-folder="openFolder"
             @delete-folder="deleteFolder"
             @edit-folder="openRenameFolderModal"
@@ -617,12 +613,17 @@ onMounted(() => {
     </div>
 
     <!-- 文件预览模态框 -->
-    <FilePreview :file="previewFile" @close="closePreview" @add-note="handleAddNote" />
+    <FilePreview
+      :file="previewFile"
+      @close="closePreview"
+      @add-note="(file) => handleManageNotes(file, 'file')"
+    />
 
-    <!-- 文件笔记模态框 -->
-    <FileNotes
+    <!-- 统一笔记管理模态框 -->
+    <UnifiedNotes
       :is-open="showNotes"
-      :file="notesFile"
+      :item="notesItem"
+      :item-type="notesItemType"
       @close="closeNotes"
       @note-created="handleNoteCreated"
     />

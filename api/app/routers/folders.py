@@ -1,12 +1,14 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_async_session
-from app.models import File, Folder, User
+from app.models import File, Folder, Note, User
 from app.schemas import (
     BatchFolderMove,
     BatchFolderOperation,
@@ -39,22 +41,60 @@ async def create_folder(
     return new_folder
 
 
-@router.get("/", response_model=List[FolderResponse])
+@router.get("/")
 async def list_folders(
     parent_id: Optional[str] = None,
+    q: Optional[str] = None,
+    page: int = Query(1, ge=1, description="页码，从1开始"),
+    page_size: int = Query(100, ge=1, le=100, description="每页条数，默认100"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    """获取当前用户的文件夹列表（分页）"""
+
+    # 计算偏移量
+    offset = (page - 1) * page_size
+
     stmt = select(Folder).where(
         Folder.user_id == current_user.id, Folder.is_deleted == 0
     )
+
     if parent_id:
         stmt = stmt.where(Folder.parent_id == parent_id)
     else:
         stmt = stmt.where(Folder.parent_id.is_(None))
 
-    result = await db.execute(stmt)
-    return result.scalars().all()
+    if q:
+        stmt = stmt.where(Folder.name.ilike(f"%{q}%"))
+
+    query = stmt.offset(offset).limit(page_size).order_by(Folder.created_at.desc())
+
+    # 获取总数
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total_result = await db.execute(count_stmt)
+    total = total_result.scalar()
+
+    # 获取分页数据
+    result = await db.execute(query)
+    folders = result.scalars().all()
+
+    return {
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size,
+        "data": [
+            {
+                "id": f.id,
+                "name": f.name,
+                "parent_id": f.parent_id,
+                "notes_count": f.notes_count,
+                "created_at": f.created_at,
+                "updated_at": f.updated_at,
+            }
+            for f in folders
+        ],
+    }
 
 
 @router.get("/{folder_id}", response_model=FolderResponse)
@@ -176,3 +216,106 @@ async def batch_delete_folders(
 
     await db.commit()
     return {"message": f"Moved {len(folders)} folders to recycle bin"}
+
+
+class NoteIdsRequest(BaseModel):
+    note_ids: List[str]
+
+
+@router.get("/{folder_id}/notes")
+async def get_folder_notes(
+    folder_id: str,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """获取文件夹关联的所有笔记"""
+    stmt = (
+        select(Folder)
+        .options(selectinload(Folder.notes))
+        .where(Folder.id == folder_id, Folder.user_id == current_user.id)
+    )
+    result = await db.execute(stmt)
+    folder = result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # 按 updated_at 降序排列笔记
+    sorted_notes = sorted(folder.notes, key=lambda note: note.updated_at, reverse=True)
+
+    return {
+        "folder_id": folder.id,
+        "folder_name": folder.name,
+        "notes": [
+            {
+                "id": note.id,
+                "title": note.title,
+                "content": note.content,
+                "visibility": note.visibility,
+                "created_at": note.created_at,
+                "updated_at": note.updated_at,
+            }
+            for note in sorted_notes
+        ],
+    }
+
+
+@router.post("/{folder_id}/attach-notes")
+async def attach_notes_to_folder(
+    folder_id: str,
+    request: NoteIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """将笔记关联到文件夹"""
+    note_ids = request.note_ids
+
+    # Fetch folder
+    folder_query = (
+        select(Folder)
+        .options(selectinload(Folder.notes))
+        .where((Folder.id == folder_id) & (Folder.user_id == current_user.id))
+    )
+    folder_result = await db.execute(folder_query)
+    folder = folder_result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    # Fetch notes
+    notes_result = await db.execute(
+        select(Note).where(Note.id.in_(note_ids) & (Note.user_id == current_user.id))
+    )
+    notes_to_attach = notes_result.scalars().all()
+
+    # Append new notes (avoiding duplicates)
+    current_ids = {n.id for n in folder.notes}
+    for note in notes_to_attach:
+        if note.id not in current_ids:
+            folder.notes.append(note)
+
+    await db.commit()
+    return {"message": "Notes attached", "note_count": len(folder.notes)}
+
+
+@router.post("/{folder_id}/detach-notes")
+async def detach_notes_from_folder(
+    folder_id: str,
+    request: NoteIdsRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """取消文件夹与笔记的关联"""
+    note_ids = request.note_ids
+
+    folder_query = (
+        select(Folder)
+        .options(selectinload(Folder.notes))
+        .where((Folder.id == folder_id) & (Folder.user_id == current_user.id))
+    )
+    folder_result = await db.execute(folder_query)
+    folder = folder_result.scalar_one_or_none()
+    if not folder:
+        raise HTTPException(status_code=404, detail="Folder not found")
+
+    folder.notes = [n for n in folder.notes if n.id not in note_ids]
+    await db.commit()
+    return {"message": "Notes detached"}

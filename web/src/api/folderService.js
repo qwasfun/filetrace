@@ -22,4 +22,13 @@ export default {
   batchDeleteFolders(data) {
     return service.post('/v1/folders/batch/delete', data)
   },
+  getFolderNotes(id) {
+    return service.get(`/v1/folders/${id}/notes`)
+  },
+  attachNotes(id, noteIds) {
+    return service.post(`/v1/folders/${id}/attach-notes`, { note_ids: noteIds })
+  },
+  detachNotes(id, noteIds) {
+    return service.post(`/v1/folders/${id}/detach-notes`, { note_ids: noteIds })
+  },
 }
