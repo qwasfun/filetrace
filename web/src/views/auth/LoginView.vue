@@ -66,6 +66,7 @@ const submit = async () => {
               required
               class="input input-bordered w-full focus:input-primary"
               placeholder="请输入用户名"
+              autocomplete="username"
             />
           </div>
           <div class="form-control w-full mt-4">
@@ -78,6 +79,7 @@ const submit = async () => {
               required
               class="input input-bordered w-full focus:input-primary"
               placeholder="请输入密码"
+              autocomplete="current-password"
             />
           </div>
         </div>
