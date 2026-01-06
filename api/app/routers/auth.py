@@ -32,10 +32,19 @@ async def register(
     user = result.scalar_one_or_none()
     if user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="username is exist"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已经存在"
         )
+
+    # 检查是否为第一位用户
+    count_stmt = select(User)
+    count_result = await session.execute(count_stmt)
+    user_count = len(count_result.scalars().all())
+
+    # 第一位用户自动成为管理员
+    user_role = "admin" if user_count == 0 else "user"
+
     hashed_password = get_password_hash(password)
-    user = User(username=username, password=hashed_password)
+    user = User(username=username, password=hashed_password, role=user_role)
     session.add(user)
     await session.commit()
     await session.refresh(user)
@@ -55,7 +64,7 @@ async def register(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
@@ -73,7 +82,7 @@ async def login(
     if not user or not verify_password(password, user.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="username or password is incorrect",
+            detail="用户名或密码错误",
         )
     access_token = create_access_token(subject=user.username)
     refresh_token = create_refresh_token(subject=user.username)
@@ -91,13 +100,17 @@ async def login(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
 @router.get("/me")
 async def read_current_user(current_user: User = Depends(get_current_user)):
-    return {"id": current_user.id, "username": current_user.username}
+    return {
+        "id": current_user.id,
+        "username": current_user.username,
+        "role": current_user.role,
+    }
 
 
 @router.post("/refresh")
@@ -108,25 +121,25 @@ async def refresh_token(
 ):
     if not refresh_token:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少 refresh token"
         )
     try:
         payload = decode_token(refresh_token)
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="无效 refresh token"
             )
     except Exception:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="无效 refresh token"
         )
     stmt = select(User).where(User.username == username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在"
         )
     access_token = create_access_token(subject=user.username)
     new_refresh_token = create_refresh_token(subject=user.username)
@@ -144,11 +157,11 @@ async def refresh_token(
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": {"id": user.id, "username": user.username},
+        "user": {"id": user.id, "username": user.username, "role": user.role},
     }
 
 
 @router.post("/logout")
 async def logout(response: Response):
     response.delete_cookie(key="refresh_token")
-    return {"message": "Logged out successfully"}
+    return {"message": "退出成功"}

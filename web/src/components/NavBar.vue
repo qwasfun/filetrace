@@ -60,7 +60,9 @@
             >
               <span class="flex items-center gap-2"> 🗑️ 回收站 </span>
             </RouterLink>
+            <!-- 管理员菜单 -->
             <RouterLink
+              v-if="isAdmin"
               to="/admin/storage-backends"
               class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               :class="{
@@ -206,6 +208,21 @@
           >
             🗑️ 回收站
           </RouterLink>
+          <!-- 移动端管理员菜单 -->
+          <RouterLink
+            v-if="isAdmin"
+            to="/admin/storage-backends"
+            class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
+            :class="{
+              'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300':
+                $route.path.startsWith('/admin'),
+              'text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-300 dark:hover:text-gray-100 dark:hover:bg-gray-800':
+                !$route.path.startsWith('/admin'),
+            }"
+            @click="showMobileMenu = false"
+          >
+            ⚙️ 系统管理
+          </RouterLink>
 
           <!-- 移动端搜索 -->
           <div class="px-4 pt-2">
@@ -305,6 +322,9 @@ const showMobileMenu = ref(false)
 
 // 检查是否已登录（直接使用 store 的计算属性）
 const isLoggedIn = computed(() => authStore.isAuthenticated)
+
+// 检查是否为管理员
+const isAdmin = computed(() => authStore.isAdmin)
 
 const handleSearch = () => {
   if (searchQuery.value.trim()) {

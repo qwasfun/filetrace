@@ -32,7 +32,7 @@ const submit = async () => {
     router.push('/')
   } catch (err) {
     console.error(err)
-    errorMsg.value = '登录失败，请检查用户名或密码'
+    errorMsg.value = err.response?.data?.detail || '登录失败，请检查用户名或密码'
   } finally {
     loading.value = false
   }
@@ -66,6 +66,7 @@ const submit = async () => {
               required
               class="input input-bordered w-full focus:input-primary"
               placeholder="请输入用户名"
+              autocomplete="username"
             />
           </div>
           <div class="form-control w-full mt-4">
@@ -78,6 +79,7 @@ const submit = async () => {
               required
               class="input input-bordered w-full focus:input-primary"
               placeholder="请输入密码"
+              autocomplete="current-password"
             />
           </div>
         </div>
