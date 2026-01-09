@@ -259,10 +259,13 @@ const uploadFiles = async (filesWithPaths) => {
       </div>
       <p class="text-xs text-base-content/60 mt-3">
         支持拖拽上传，自动保留文件夹结构
-        <span v-if="uploadMode === 'direct'" class="badge badge-success badge-xs ml-2 align-bottom">
+        <span
+          v-if="uploadMode === 'direct'"
+          class="badge badge-success badge-xs ml-2 align-baseline"
+        >
           直传模式
         </span>
-        <span v-else class="badge badge-info badge-xs ml-2 align-bottom">普通模式</span>
+        <span v-else class="badge badge-info badge-xs ml-2 align-baseline">普通模式</span>
       </p>
     </div>
   </div>

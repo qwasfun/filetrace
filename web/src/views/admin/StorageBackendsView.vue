@@ -201,7 +201,7 @@
               <div class="mt-2">
                 <span class="font-semibold">客户端直传:</span>
                 <span
-                  class="badge badge-sm ml-1"
+                  class="badge badge-sm ml-1 align-baseline"
                   :class="backend.allow_client_direct_upload ? 'badge-success' : 'badge-ghost'"
                 >
                   {{ backend.allow_client_direct_upload ? '已启用' : '未启用' }}
