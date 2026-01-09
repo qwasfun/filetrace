@@ -102,6 +102,25 @@ async def create_storage_backend(
     return _backend_to_response(new_backend)
 
 
+@router.get("/default", response_model=StorageBackendResponse)
+async def get_default_backend(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """获取默认存储后端配置（普通用户也可访问）"""
+    stmt = select(StorageBackendConfig).where(StorageBackendConfig.is_default == 1)
+    result = await db.execute(stmt)
+    backend = result.scalar_one_or_none()
+
+    if not backend:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="未找到默认存储后端",
+        )
+
+    return _backend_to_response(backend)
+
+
 @router.get("", response_model=List[StorageBackendResponse])
 async def list_storage_backends(
     db: AsyncSession = Depends(get_async_session),

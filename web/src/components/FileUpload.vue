@@ -8,10 +8,10 @@ const props = defineProps({
     type: String,
     default: null,
   },
-  // 上传模式：'traditional' - 传统上传（通过后端），'direct' - 直传S3
+  // 上传模式：'traditional' - 普通上传（通过后端），'direct' - 直传S3
   uploadMode: {
     type: String,
-    default: 'traditional', // 默认使用传统上传
+    default: 'traditional', // 默认使用普通上传
     validator: (value) => ['traditional', 'direct'].includes(value),
   },
 })
@@ -113,7 +113,7 @@ const getAllFiles = async (dataTransferItems) => {
   return files
 }
 
-// 传统上传方式（通过后端）
+// 普通上传方式（通过后端）
 const uploadFilesTraditional = async (filesWithPaths) => {
   // 分批上传，每批最多 20 个文件
   const BATCH_SIZE = 20
@@ -262,7 +262,7 @@ const uploadFiles = async (filesWithPaths) => {
         <span v-if="uploadMode === 'direct'" class="badge badge-success badge-xs ml-2 align-bottom">
           直传模式
         </span>
-        <span v-else class="badge badge-info badge-xs ml-2 align-bottom">中转模式</span>
+        <span v-else class="badge badge-info badge-xs ml-2 align-bottom">普通模式</span>
       </p>
     </div>
   </div>

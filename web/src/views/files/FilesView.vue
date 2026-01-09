@@ -6,6 +6,7 @@ import FilePreview from '../../components/FilePreview.vue'
 import UnifiedNotes from '../../components/UnifiedNotes.vue'
 import fileService from '../../api/fileService.js'
 import folderService from '../../api/folderService.js'
+import storageBackendService from '../../api/storageBackendService.js'
 
 const files = ref([])
 const folders = ref([])
@@ -43,8 +44,12 @@ const moveFolders = ref([])
 const moveLoading = ref(false)
 
 // 上传模式配置：'traditional' 或 'direct'
-// 可以从环境变量或配置中读取，这里默认使用传统模式
+// 可以从环境变量或配置中读取，这里默认使用普通模式
 const uploadMode = ref('traditional')
+// 默认存储后端配置
+const defaultBackend = ref(null)
+// 是否支持直传（根据后端配置）
+const supportsDirectUpload = ref(false)
 
 const toggleSelectionMode = () => {
   isSelectionMode.value = !isSelectionMode.value
@@ -311,7 +316,28 @@ const handleNoteCreated = () => {
   loadData()
 }
 
+const loadDefaultBackend = async () => {
+  try {
+    const backend = await storageBackendService.getDefaultBackend()
+    defaultBackend.value = backend
+    // 只有S3类型且启用了客户端直传才支持直传模式
+    supportsDirectUpload.value =
+      backend.backend_type === 's3' && backend.allow_client_direct_upload === true
+
+    // 如果不支持直传，强制使用普通模式
+    if (!supportsDirectUpload.value) {
+      uploadMode.value = 'traditional'
+    }
+  } catch (error) {
+    console.error('Failed to load default backend', error)
+    // 出错时默认不支持直传
+    supportsDirectUpload.value = false
+    uploadMode.value = 'traditional'
+  }
+}
+
 onMounted(() => {
+  loadDefaultBackend()
   loadData()
 })
 </script>
@@ -468,13 +494,14 @@ onMounted(() => {
         <div
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
         >
-          <div class="flex justify-between">
+          <div class="flex justify-between items-start">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📤 上传文件</h2>
 
             <button
+              v-if="supportsDirectUpload"
               @click="uploadMode = uploadMode === 'traditional' ? 'direct' : 'traditional'"
               class="btn btn-outline btn-sm"
-              :title="uploadMode === 'traditional' ? '切换到直传模式' : '切换到中转模式'"
+              :title="uploadMode === 'traditional' ? '切换到直传模式' : '切换到普通模式'"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -484,8 +511,11 @@ onMounted(() => {
                   d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                 ></path>
               </svg>
-              {{ uploadMode === 'direct' ? '中转模式' : '直传模式' }}
+              {{ uploadMode === 'direct' ? '普通模式' : '直传模式' }}
             </button>
+            <div v-else class="text-xs text-gray-500">
+              {{ defaultBackend?.backend_type === 'local' ? '本地存储' : '普通模式' }}
+            </div>
           </div>
           <FileUpload
             :folder-id="currentFolderId"

@@ -1,6 +1,10 @@
 import service from '@/utils/service'
 
 export default {
+  // 获取默认存储后端配置（普通用户也可访问）
+  getDefaultBackend() {
+    return service.get('/v1/storage-backends/default')
+  },
   // 获取所有存储后端
   getBackends() {
     return service.get('/v1/storage-backends')
