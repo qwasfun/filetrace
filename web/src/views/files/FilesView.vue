@@ -42,6 +42,10 @@ const moveBreadcrumbs = ref([])
 const moveFolders = ref([])
 const moveLoading = ref(false)
 
+// 上传模式配置：'traditional' 或 'direct'
+// 可以从环境变量或配置中读取，这里默认使用传统模式
+const uploadMode = ref('traditional')
+
 const toggleSelectionMode = () => {
   isSelectionMode.value = !isSelectionMode.value
   selectedFiles.value = []
@@ -270,7 +274,6 @@ const navigateBreadcrumb = async (index) => {
 
 const handleUploadSuccess = async () => {
   await loadData()
-  showUploadModal.value = false
 }
 
 const handleDelete = async (id) => {
@@ -465,8 +468,30 @@ onMounted(() => {
         <div
           class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700"
         >
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📤 上传文件</h2>
-          <FileUpload :folder-id="currentFolderId" @upload-success="handleUploadSuccess" />
+          <div class="flex justify-between">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">📤 上传文件</h2>
+
+            <button
+              @click="uploadMode = uploadMode === 'traditional' ? 'direct' : 'traditional'"
+              class="btn btn-outline btn-sm"
+              :title="uploadMode === 'traditional' ? '切换到S3直传模式' : '切换到传统上传模式'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                ></path>
+              </svg>
+              {{ uploadMode === 'direct' ? 'S3直传' : '传统上传' }}
+            </button>
+          </div>
+          <FileUpload
+            :folder-id="currentFolderId"
+            :upload-mode="uploadMode"
+            @upload-success="handleUploadSuccess"
+          />
         </div>
       </div>
 

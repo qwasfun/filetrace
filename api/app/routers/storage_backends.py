@@ -41,6 +41,7 @@ def _backend_to_response(backend: StorageBackendConfig) -> StorageBackendRespons
         backend_type=str(backend.backend_type),
         is_active=bool(backend.is_active),
         is_default=bool(backend.is_default),
+        allow_client_direct_upload=bool(backend.allow_client_direct_upload),
         config=_config_to_dict(backend),
         description=str(backend.description) if backend.description else None,
         created_at=backend.created_at,
@@ -86,6 +87,11 @@ async def create_storage_backend(
         description=backend_data.description,
         is_active=backend_data.is_default,  # 默认后端自动激活
         is_default=backend_data.is_default,
+        allow_client_direct_upload=(
+            backend_data.allow_client_direct_upload
+            if backend_data.backend_type.value == "s3"
+            else False
+        ),
         created_by=current_user.id,
     )
 
@@ -172,6 +178,16 @@ async def update_storage_backend(
 
     if backend_data.is_active is not None:
         backend.is_active = backend_data.is_active
+
+    if backend_data.allow_client_direct_upload is not None:
+        # 只有S3类型的存储后端才能启用客户端直传
+        if backend.backend_type == "s3":
+            backend.allow_client_direct_upload = backend_data.allow_client_direct_upload
+        elif backend_data.allow_client_direct_upload:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="只有S3类型的存储后端支持客户端直传功能",
+            )
 
     if backend_data.is_default is not None:
         if backend_data.is_default:
@@ -344,6 +360,7 @@ async def export_storage_config(
                 "description": backend.description,
                 "is_active": bool(backend.is_active),
                 "is_default": bool(backend.is_default),
+                "allow_client_direct_upload": bool(backend.allow_client_direct_upload),
             }
             for backend in backends
         ],
@@ -442,6 +459,12 @@ async def import_storage_config(
                         backend.description = backend_data.get("description")
                         backend.is_active = backend_data.get("is_active", False)
                         backend.is_default = backend_data.get("is_default", False)
+                        # 只有S3类型才能启用直传
+                        backend.allow_client_direct_upload = (
+                            backend_data.get("allow_client_direct_upload", False)
+                            if backend_type == "s3"
+                            else False
+                        )
                         backend.updated_at = datetime.utcnow()
                         stats["updated"] += 1
                     else:
@@ -458,6 +481,12 @@ async def import_storage_config(
                         description=backend_data.get("description"),
                         is_active=backend_data.get("is_active", False),
                         is_default=backend_data.get("is_default", False),
+                        # 只有S3类型才能启用直传
+                        allow_client_direct_upload=(
+                            backend_data.get("allow_client_direct_upload", False)
+                            if backend_type == "s3"
+                            else False
+                        ),
                         created_by=current_user.id,
                         created_at=datetime.utcnow(),
                         updated_at=datetime.utcnow(),

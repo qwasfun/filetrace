@@ -435,3 +435,54 @@ class S3StorageBackend(StorageBackend):
             return response["Body"].read()
         except Exception as e:
             raise Exception(f"从 S3 获取文件失败: {e}")
+
+    def generate_presigned_upload_url(
+        self, filename: str, user_id: str = None, content_type: str = None
+    ) -> dict:
+        """
+        生成预签名上传 URL，用于客户端直传
+
+        Args:
+            filename: 文件名
+            user_id: 用户ID
+            content_type: 文件MIME类型
+
+        Returns:
+            包含上传URL和相关信息的字典
+        """
+        # 生成 S3 键
+        s3_key = self._generate_s3_key(filename, user_id)
+
+        try:
+            # 构建上传参数
+            params = {
+                "Bucket": self.bucket_name,
+                "Key": s3_key,
+            }
+
+            # 如果提供了content_type，添加到条件中
+            conditions = []
+            fields = {}
+
+            if content_type:
+                fields["Content-Type"] = content_type
+                conditions.append({"Content-Type": content_type})
+
+            # 生成预签名POST URL（用于表单上传）
+            presigned_post = self.s3_client.generate_presigned_post(
+                Bucket=self.bucket_name,
+                Key=s3_key,
+                Fields=fields,
+                Conditions=conditions,
+                ExpiresIn=3600,  # 1小时有效期
+            )
+
+            return {
+                "type": "presigned_post",
+                "url": presigned_post["url"],
+                "fields": presigned_post["fields"],
+                "s3_key": s3_key,
+                "bucket": self.bucket_name,
+            }
+        except Exception as e:
+            raise Exception(f"生成预签名上传 URL 失败: {e}")
