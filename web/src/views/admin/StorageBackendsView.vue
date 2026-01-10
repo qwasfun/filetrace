@@ -198,6 +198,15 @@
               <div v-if="backend.config.endpoint_url">
                 <span class="font-semibold">Endpoint:</span> {{ backend.config.endpoint_url }}
               </div>
+              <div class="mt-2">
+                <span class="font-semibold">客户端直传:</span>
+                <span
+                  class="badge badge-sm ml-1 align-baseline"
+                  :class="backend.allow_client_direct_upload ? 'badge-success' : 'badge-ghost'"
+                >
+                  {{ backend.allow_client_direct_upload ? '已启用' : '未启用' }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -348,6 +357,22 @@
               <label class="label"
                 ><span class="label-text-alt text-gray-500">用于公开访问的自定义域名</span></label
               >
+            </div>
+
+            <div class="form-control mt-4">
+              <label class="label cursor-pointer justify-start gap-4">
+                <input
+                  type="checkbox"
+                  v-model="form.allow_client_direct_upload"
+                  class="checkbox checkbox-primary"
+                />
+                <div>
+                  <span class="label-text font-medium">启用客户端直传</span>
+                  <p class="text-xs text-gray-500 mt-1">
+                    允许前端直接上传到S3，提升上传速度并减轻服务器负担
+                  </p>
+                </div>
+              </label>
             </div>
           </div>
 
@@ -525,6 +550,7 @@ const form = reactive({
   backend_type: 'local',
   description: '',
   is_default: false,
+  allow_client_direct_upload: false,
   config: {
     base_dir: 'data/files',
     bucket_name: '',
@@ -585,6 +611,7 @@ const openCreateModal = () => {
   form.backend_type = 'local'
   form.description = ''
   form.is_default = false
+  form.allow_client_direct_upload = false
   form.config = { base_dir: 'data/files' }
   document.getElementById('backend_modal').showModal()
 }
@@ -596,6 +623,7 @@ const openEditModal = (backend) => {
   form.backend_type = backend.backend_type
   form.description = backend.description
   form.is_default = backend.is_default
+  form.allow_client_direct_upload = backend.allow_client_direct_upload || false
   // Deep copy config to avoid reactivity issues
   form.config = JSON.parse(JSON.stringify(backend.config))
 
@@ -627,6 +655,8 @@ const handleSubmit = async () => {
       name: form.name,
       backend_type: form.backend_type,
       description: form.description,
+      allow_client_direct_upload:
+        form.backend_type === 's3' ? form.allow_client_direct_upload : false,
       config: { ...form.config },
     }
 

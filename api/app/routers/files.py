@@ -22,6 +22,7 @@ from app.schemas import (
     FileRename,
     FileResponseModel,
 )
+from app.services.file_type_detector import FileTypeDetector
 from app.services.security import get_current_user
 from app.services.storage import (
     delete_file,
@@ -99,6 +100,133 @@ async def get_or_create_folder_by_path(
         current_parent_id = folder.id
 
     return current_parent_id
+
+
+@router.post("/presigned-upload-url")
+async def get_presigned_upload_url(
+    filename: str = Query(..., description="文件名"),
+    content_type: str = Query(None, description="文件MIME类型"),
+    folder_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    获取S3预签名上传URL，用于客户端直传
+
+    Returns:
+        presigned_url: 预签名上传URL及相关信息
+    """
+    # 获取默认存储后端
+    backend, backend_id = await get_default_storage_backend(db)
+
+    # 检查是否为S3后端并且允许直传
+    if not isinstance(backend, S3StorageBackend):
+        raise HTTPException(status_code=400, detail="当前存储后端不支持客户端直传")
+
+    # 检查是否允许直传（从数据库配置读取）
+    from app.models import StorageBackendConfig
+
+    stmt = select(StorageBackendConfig).where(StorageBackendConfig.id == backend_id)
+    result = await db.execute(stmt)
+    backend_config = result.scalar_one_or_none()
+
+    if not backend_config or not backend_config.allow_client_direct_upload:
+        raise HTTPException(status_code=400, detail="当前存储后端未启用客户端直传功能")
+
+    try:
+        # 生成预签名URL
+        presigned_data = backend.generate_presigned_upload_url(
+            filename=filename, user_id=str(current_user.id), content_type=content_type
+        )
+
+        # 返回预签名信息
+        return {
+            "presigned_url": presigned_data["url"],
+            "fields": presigned_data["fields"],
+            "s3_key": presigned_data["s3_key"],
+            "bucket": presigned_data["bucket"],
+            "storage_backend_id": backend_id,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成预签名URL失败: {str(e)}")
+
+
+@router.post("/confirm-direct-upload", response_model=FileResponseModel)
+async def confirm_direct_upload(
+    s3_key: str = Query(..., description="S3对象键"),
+    filename: str = Query(..., description="原始文件名"),
+    size: int = Query(..., description="文件大小"),
+    content_type: str = Query(None, description="文件MIME类型"),
+    storage_backend_id: str = Query(..., description="存储后端ID"),
+    folder_id: Optional[str] = Query(None),
+    original_created_at: Optional[datetime] = Query(None),
+    original_updated_at: Optional[datetime] = Query(None),
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    确认客户端直传完成，在数据库中创建文件记录
+
+    Args:
+        s3_key: S3对象键（存储路径）
+        filename: 原始文件名
+        size: 文件大小
+        content_type: 文件MIME类型
+        storage_backend_id: 存储后端ID
+        folder_id: 文件夹ID
+        original_created_at: 原始创建时间
+        original_updated_at: 原始修改时间
+    """
+    # 验证存储后端
+    backend = await get_storage_backend_by_id(db, storage_backend_id)
+    if not isinstance(backend, S3StorageBackend):
+        raise HTTPException(status_code=400, detail="无效的存储后端")
+
+    # 验证文件是否真的存在于S3
+    if not backend.exists(s3_key):
+        raise HTTPException(status_code=400, detail="文件上传未完成或不存在")
+
+    # 检测文件类型
+    file_type_info = FileTypeDetector.detect(
+        filename=filename,
+        file_content=None,  # 直传模式下无法获取文件内容
+        mime_hint=content_type,
+    )
+
+    # 处理时间戳
+    created_at = original_created_at if original_created_at else datetime.utcnow()
+    if created_at.tzinfo is not None:
+        created_at = created_at.replace(tzinfo=None)
+
+    updated_at = original_updated_at if original_updated_at else datetime.utcnow()
+    if updated_at.tzinfo is not None:
+        updated_at = updated_at.replace(tzinfo=None)
+
+    # 创建文件记录
+    now = datetime.utcnow()
+    file = File(
+        id=str(uuid.uuid4()),
+        user_id=str(current_user.id),
+        folder_id=folder_id,
+        filename=filename,
+        storage_path=s3_key,
+        storage_backend_id=storage_backend_id,
+        mime_type=file_type_info.get("mime_type"),
+        size=size,
+        file_type=file_type_info.get("category"),
+        file_type_confidence=file_type_info.get("confidence"),
+        original_created_at=created_at,
+        original_updated_at=updated_at,
+        created_at=now,
+        updated_at=now,
+        is_deleted=0,
+    )
+
+    db.add(file)
+    await db.commit()
+    await db.refresh(file)
+
+    return file
 
 
 @router.post("/", response_model=List[FileResponseModel])

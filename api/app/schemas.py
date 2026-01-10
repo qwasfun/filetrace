@@ -183,6 +183,7 @@ class StorageBackendCreate(BaseModel):
     config: LocalStorageConfig | S3StorageConfig
     description: str | None = None
     is_default: bool = False
+    allow_client_direct_upload: bool = False  # 是否允许客户端直传（仅S3）
 
 
 class StorageBackendUpdate(BaseModel):
@@ -193,6 +194,7 @@ class StorageBackendUpdate(BaseModel):
     description: str | None = None
     is_active: bool | None = None
     is_default: bool | None = None
+    allow_client_direct_upload: bool | None = None  # 是否允许客户端直传（仅S3）
 
 
 class StorageBackendResponse(BaseModel):
@@ -203,6 +205,7 @@ class StorageBackendResponse(BaseModel):
     backend_type: str
     is_active: bool
     is_default: bool
+    allow_client_direct_upload: bool  # 是否允许客户端直传（仅S3）
     config: dict
     description: str | None = None
     created_at: datetime

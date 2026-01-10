@@ -183,6 +183,11 @@ class StorageBackendConfig(Base):
     # 配置参数 (JSON格式存储)
     config_json: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # 是否允许客户端直传 (仅对S3类型有效)
+    allow_client_direct_upload: Mapped[bool] = mapped_column(
+        Integer, default=0
+    )  # 0: False, 1: True
+
     # 元数据
     description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -1,10 +1,18 @@
 <script setup>
 import { ref } from 'vue'
 
+import fileService from '../api/fileService'
+
 const props = defineProps({
   folderId: {
     type: String,
     default: null,
+  },
+  // 上传模式：'traditional' - 普通上传（通过后端），'direct' - 直传S3
+  uploadMode: {
+    type: String,
+    default: 'traditional', // 默认使用普通上传
+    validator: (value) => ['traditional', 'direct'].includes(value),
   },
 })
 
@@ -105,11 +113,8 @@ const getAllFiles = async (dataTransferItems) => {
   return files
 }
 
-import fileService from '../api/fileService'
-
-const uploadFiles = async (filesWithPaths) => {
-  uploading.value = true
-
+// 普通上传方式（通过后端）
+const uploadFilesTraditional = async (filesWithPaths) => {
   // 分批上传，每批最多 20 个文件
   const BATCH_SIZE = 20
   const totalFiles = filesWithPaths.length
@@ -117,27 +122,86 @@ const uploadFiles = async (filesWithPaths) => {
 
   uploadProgress.value = { current: 0, total: totalFiles }
 
-  try {
-    for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
-      const batch = filesWithPaths.slice(i, i + BATCH_SIZE)
-      const formData = new FormData()
+  for (let i = 0; i < totalFiles; i += BATCH_SIZE) {
+    const batch = filesWithPaths.slice(i, i + BATCH_SIZE)
+    const formData = new FormData()
 
-      // 添加文件和对应的相对路径
-      for (const { file, path } of batch) {
-        // 使用 webkitRelativePath 作为文件名发送
-        const fileToUpload = new File([file], path, { type: file.type })
-        formData.append('files', fileToUpload)
-      }
+    // 添加文件和对应的相对路径
+    for (const { file, path } of batch) {
+      // 使用 webkitRelativePath 作为文件名发送
+      const fileToUpload = new File([file], path, { type: file.type })
+      formData.append('files', fileToUpload)
+    }
 
+    const params = {}
+    if (props.folderId) {
+      params.folder_id = props.folderId
+    }
+
+    await fileService.uploadFiles(formData, params)
+    uploadedCount += batch.length
+    uploadProgress.value.current = uploadedCount
+    console.log(`已上传 ${uploadedCount}/${totalFiles} 个文件`)
+  }
+}
+
+// S3直传方式
+const uploadFilesDirect = async (filesWithPaths) => {
+  const totalFiles = filesWithPaths.length
+  let uploadedCount = 0
+
+  uploadProgress.value = { current: 0, total: totalFiles }
+
+  // 逐个文件处理（S3直传通常是并发的，但这里为了简化采用串行）
+  for (const { file, path } of filesWithPaths) {
+    try {
+      // 1. 获取预签名URL
       const params = {}
       if (props.folderId) {
         params.folder_id = props.folderId
       }
 
-      await fileService.uploadFiles(formData, params)
-      uploadedCount += batch.length
+      const presignedData = await fileService.getPresignedUploadUrl(
+        path, // 使用完整路径作为文件名
+        file.type,
+        params,
+      )
+
+      // 2. 直接上传到S3
+      await fileService.uploadToS3(presignedData, file)
+
+      // 3. 确认上传完成，创建数据库记录
+      await fileService.confirmDirectUpload({
+        s3_key: presignedData.s3_key,
+        filename: path,
+        size: file.size,
+        content_type: file.type,
+        storage_backend_id: presignedData.storage_backend_id,
+        folder_id: props.folderId,
+      })
+
+      uploadedCount++
       uploadProgress.value.current = uploadedCount
       console.log(`已上传 ${uploadedCount}/${totalFiles} 个文件`)
+    } catch (error) {
+      console.error(`文件 ${path} 上传失败:`, error)
+      throw error
+    }
+  }
+}
+
+const uploadFiles = async (filesWithPaths) => {
+  uploading.value = true
+
+  const totalFiles = filesWithPaths.length
+
+  uploadProgress.value = { current: 0, total: totalFiles }
+
+  try {
+    if (props.uploadMode === 'direct') {
+      await uploadFilesDirect(filesWithPaths)
+    } else {
+      await uploadFilesTraditional(filesWithPaths)
     }
 
     emit('upload-success')
@@ -193,7 +257,16 @@ const uploadFiles = async (filesWithPaths) => {
         <button @click="triggerFileInput" class="btn btn-primary btn-sm">📄 选择文件</button>
         <button @click="triggerFolderInput" class="btn btn-secondary btn-sm">📁 选择文件夹</button>
       </div>
-      <p class="text-xs text-base-content/60 mt-3">支持拖拽上传，自动保留文件夹结构</p>
+      <p class="text-xs text-base-content/60 mt-3">
+        支持拖拽上传，自动保留文件夹结构
+        <span
+          v-if="uploadMode === 'direct'"
+          class="badge badge-success badge-xs ml-2 align-baseline"
+        >
+          直传模式
+        </span>
+        <span v-else class="badge badge-info badge-xs ml-2 align-baseline">普通模式</span>
+      </p>
     </div>
   </div>
 </template>
