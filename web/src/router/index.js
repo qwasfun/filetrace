@@ -30,6 +30,11 @@ const router = createRouter({
       component: FilesView,
     },
     {
+      path: '/file/:id',
+      name: 'file-detail',
+      component: () => import('../views/files/FileDetailView.vue'),
+    },
+    {
       path: '/recycle',
       name: 'recycle',
       component: () => import('../views/files/RecycleBinView.vue'),
@@ -38,6 +43,11 @@ const router = createRouter({
       path: '/notes',
       name: 'notes',
       component: NotesView,
+    },
+    {
+      path: '/note/:id',
+      name: 'note-detail',
+      component: () => import('../views/notes/NoteDetailView.vue'),
     },
     {
       path: '/search',

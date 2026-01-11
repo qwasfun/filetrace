@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import fileService from '../api/fileService'
 import folderService from '../api/folderService'
-import { getFileIcon } from '@/utils/file'
+import { getFileIcon, isImage } from '@/utils/file'
 
 const props = defineProps({
   excludeFileIds: {
@@ -149,8 +149,6 @@ const handleConfirm = () => {
     folders: selectedFolders.value,
   })
 }
-
-const isImage = (mimeType) => mimeType?.startsWith('image/')
 
 let searchTimeout
 const handleSearch = () => {
