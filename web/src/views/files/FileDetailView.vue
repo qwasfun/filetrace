@@ -172,20 +172,20 @@ onMounted(() => {
             >
               <!-- 图片预览 -->
               <img
-                v-if="isImage"
+                v-if="isImage(file.mime_type)"
                 :src="file.preview_url"
                 :alt="file.filename"
                 class="max-w-full max-h-[600px] object-contain"
               />
               <!-- 视频预览 -->
               <video
-                v-else-if="isVideo"
+                v-else-if="isVideo(file.mime_type)"
                 :src="file.preview_url"
                 controls
                 class="max-w-full max-h-[600px] rounded-lg"
               ></video>
               <!-- 音频预览 -->
-              <div v-else-if="isAudio" class="w-full p-8">
+              <div v-else-if="isAudio(file.mime_type)" class="w-full p-8">
                 <div class="text-center mb-4">
                   <div class="text-6xl mb-2">🎵</div>
                   <p class="text-gray-600 dark:text-gray-400">音频文件</p>
@@ -193,9 +193,17 @@ onMounted(() => {
                 <audio :src="file.preview_url" controls class="w-full"></audio>
               </div>
               <!-- PDF 预览 -->
-              <PDFViewer v-else-if="isPdf" :url="file.preview_url" class="h-screen w-full" />
+              <PDFViewer
+                v-else-if="isPdf(file.mime_type)"
+                :url="file.preview_url"
+                class="h-screen w-full"
+              />
               <!-- 文本文件预览 -->
-              <TextViewer v-else-if="isText" :url="file.preview_url" class="w-full h-full" />
+              <TextViewer
+                v-else-if="isText(file.mime_type)"
+                :url="file.preview_url"
+                class="w-full h-full"
+              />
               <!-- 其他文件类型 -->
               <div v-else class="text-center p-8">
                 <div :class="`text-8xl ${getFileTypeColor(file.mime_type)}`">

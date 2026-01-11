@@ -1,6 +1,6 @@
-export const isImage = (mimeType) => mimeType.startsWith('image/')
+export const isImage = (mimeType) => mimeType?.startsWith('image/')
 export const isVideo = (mimeType) => mimeType?.startsWith('video/')
-export const isAudio = (mimeType) => mimeType.startsWith('audio/')
+export const isAudio = (mimeType) => mimeType?.startsWith('audio/')
 export const isPdf = (mimeType) => mimeType === 'application/pdf'
 export const isText = (mimeType) => {
   return (
