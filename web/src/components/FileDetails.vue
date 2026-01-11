@@ -2,6 +2,7 @@
 import { formatDate, formatSize } from '@/utils/format'
 import { getFileIcon, getFileTypeColor } from '@/utils/file'
 import PDFViewer from '@/components/PDFViewer.vue'
+import TextViewer from '@/components/TextViewer.vue'
 
 const props = defineProps({
   file: {
@@ -19,6 +20,13 @@ const emit = defineEmits(['close', 'preview', 'manage-notes', 'rename', 'delete'
 const isImage = (mimeType) => mimeType?.startsWith('image/')
 const isVideo = (mimeType) => mimeType?.startsWith('video/')
 const isPdf = (mimeType) => mimeType === 'application/pdf'
+
+const isText = (mimeType) => {
+  return (
+    mimeType.startsWith('text/') ||
+    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
+  )
+}
 
 const copyToClipboard = async (text) => {
   try {
@@ -110,6 +118,12 @@ const close = () => {
               v-else-if="isPdf(file.mime_type)"
               :url="file.preview_url"
               class="h-screen w-full"
+            />
+            <!-- 文本文件预览 -->
+            <TextViewer
+              v-else-if="isText(file.mime_type)"
+              :url="file.preview_url"
+              class="p-4 h-screen w-full"
             />
             <!-- 其他文件类型 -->
             <div v-else class="text-center p-8">

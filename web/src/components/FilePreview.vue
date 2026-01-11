@@ -117,17 +117,7 @@
         </div>
 
         <!-- 文本文件预览 -->
-        <div v-else-if="isText(file.mime_type)" class="p-4 h-full">
-          <div
-            class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto h-full"
-          >
-            <pre v-if="textContent">{{ textContent }}</pre>
-            <div v-else class="flex items-center justify-center py-8">
-              <span class="loading loading-spinner loading-md"></span>
-              <span class="ml-2">加载中...</span>
-            </div>
-          </div>
-        </div>
+        <TextViewer v-else-if="isText(file.mime_type)" :url="file.preview_url" class="p-4 h-full" />
 
         <!-- 其他文件类型 -->
         <div v-else class="flex flex-col items-center justify-center p-12 text-center">
@@ -164,6 +154,7 @@ import { ref, watch } from 'vue'
 import { formatDate, formatSize } from '@/utils/format'
 import { getFileIcon, getFileTypeColor } from '@/utils/file'
 import PDFViewer from './PDFViewer.vue'
+import TextViewer from './TextViewer.vue'
 
 const props = defineProps({
   file: {
@@ -173,8 +164,6 @@ const props = defineProps({
 })
 
 defineEmits(['close', 'add-note'])
-
-const textContent = ref('')
 
 const isImage = (mimeType) => mimeType.startsWith('image/')
 const isVideo = (mimeType) => mimeType.startsWith('video/')
@@ -186,30 +175,4 @@ const isText = (mimeType) => {
     ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
   )
 }
-
-// 加载文本内容
-const loadTextContent = async () => {
-  if (!props.file || !isText(props.file.mime_type)) return
-
-  try {
-    const response = await fetch(`${props.file.preview_url}`)
-    const text = await response.text()
-    textContent.value =
-      text.length > 10000 ? text.substring(0, 10000) + '\n...(文件内容过长，已截断)' : text
-  } catch {
-    textContent.value = '无法加载文件内容'
-  }
-}
-
-watch(
-  () => props.file,
-  (newFile) => {
-    textContent.value = ''
-
-    if (newFile && isText(newFile.mime_type)) {
-      loadTextContent()
-    }
-  },
-  { immediate: true },
-)
 </script>

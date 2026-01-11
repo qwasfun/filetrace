@@ -6,6 +6,7 @@ import { getFileIcon, getFileTypeColor } from '@/utils/file'
 import fileService from '@/api/fileService.js'
 import UnifiedNotes from '@/components/UnifiedNotes.vue'
 import PDFViewer from '@/components/PDFViewer.vue'
+import TextViewer from '@/components/TextViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,16 +19,14 @@ const newFileName = ref('')
 
 const isImage = computed(() => file.value?.mime_type?.startsWith('image/'))
 const isVideo = computed(() => file.value?.mime_type?.startsWith('video/'))
-const isPDF = computed(() => file.value?.mime_type === 'application/pdf')
+const isPdf = computed(() => file.value?.mime_type === 'application/pdf')
 const isAudio = computed(() => file.value?.mime_type?.startsWith('audio/'))
-const isText = computed(
-  () =>
-    file.value?.mime_type.startsWith('text/') ||
-    ['application/json', 'application/javascript', 'application/xml'].includes(
-      file.value?.mime_type,
-    ),
-)
-const textContent = ref('')
+const isText = (mimeType) => {
+  return (
+    mimeType.startsWith('text/') ||
+    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
+  )
+}
 
 const getFileExtension = (filename) => {
   const parts = filename?.split('.')
@@ -53,8 +52,6 @@ const loadFile = async () => {
     if (foundFile) {
       file.value = foundFile
       newFileName.value = foundFile.filename
-
-      loadFileContent()
     } else {
       alert('文件不存在')
       router.push({ name: 'files' })
@@ -102,26 +99,6 @@ const handleManageNotes = () => {
 const closeNotes = () => {
   showNotes.value = false
   loadFile() // 刷新文件信息以更新笔记数量
-}
-
-// 加载文本内容
-const loadTextContent = async () => {
-  if (!file.value || !isText.value) return
-
-  try {
-    const response = await fetch(`${file.value.preview_url}`)
-    const text = await response.text()
-    textContent.value =
-      text.length > 10000 ? text.substring(0, 10000) + '\n...(文件内容过长，已截断)' : text
-  } catch {
-    textContent.value = '无法加载文件内容'
-  }
-}
-
-const loadFileContent = () => {
-  if (isText.value) {
-    loadTextContent()
-  }
 }
 
 onMounted(() => {
@@ -219,18 +196,9 @@ onMounted(() => {
                 <audio :src="file.preview_url" controls class="w-full"></audio>
               </div>
               <!-- PDF 预览 -->
-              <PDFViewer v-else-if="isPDF" :url="file.preview_url" class="h-screen w-full" />
+              <PDFViewer v-else-if="isPdf" :url="file.preview_url" class="h-screen w-full" />
               <!-- 文本文件预览 -->
-              <div
-                v-else-if="isText"
-                class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 font-mono text-sm overflow-auto h-full"
-              >
-                <pre v-if="textContent">{{ textContent }}</pre>
-                <div v-else class="flex items-center justify-center py-8">
-                  <span class="loading loading-spinner loading-md"></span>
-                  <span class="ml-2">加载中...</span>
-                </div>
-              </div>
+              <TextViewer v-else-if="isText" :url="file.preview_url" class="w-full h-full" />
               <!-- 其他文件类型 -->
               <div v-else class="text-center p-8">
                 <div :class="`text-8xl ${getFileTypeColor(file.mime_type)}`">
