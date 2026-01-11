@@ -25,11 +25,8 @@ from app.schemas import (
 from app.services.file_type_detector import FileTypeDetector
 from app.services.security import get_current_user
 from app.services.storage import (
-    delete_file,
     file_exists,
     get_default_storage_backend,
-    get_download_info,
-    get_public_url,
     get_storage_backend_by_id,
     save_file,
 )
@@ -525,21 +522,24 @@ async def download_file(
     if not file_exists(storage_path, backend=backend):
         raise HTTPException(status_code=404, detail="文件在存储中不存在")
 
-    # 获取下载信息
-    download_type, path_or_url = get_download_info(
-        storage_path, backend, file_record.filename
-    )
-
-    if download_type == "url":
+    if isinstance(backend, S3StorageBackend):
         # S3 存储：重定向到预签名 URL
-        return RedirectResponse(url=path_or_url)
+        try:
+            url = backend.get_public_url(
+                storage_path, filename=file_record.filename, disposition="inline"
+            )
+            return RedirectResponse(url=url)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, detail=f"获取 S3 下载链接失败: {str(e)}"
+            )
     else:
         # 本地存储：使用 FileResponse
         # 对文件名进行URL编码以支持中文等非ASCII字符
         encoded_filename = quote(file_record.filename)
 
         return FileResponse(
-            path=path_or_url,
+            path=storage_path,
             filename=file_record.filename,
             media_type=file_record.mime_type,
             headers={
