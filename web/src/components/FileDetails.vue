@@ -1,6 +1,15 @@
 <script setup>
 import { formatDate, formatSize } from '@/utils/format'
-import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import {
+  getFileIcon,
+  getFileTypeColor,
+  isImage,
+  isVideo,
+  isAudio,
+  isPdf,
+  isText,
+} from '@/utils/file'
+
 import PDFViewer from '@/components/PDFViewer.vue'
 import TextViewer from '@/components/TextViewer.vue'
 
@@ -16,17 +25,6 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'preview', 'manage-notes', 'rename', 'delete', 'download'])
-
-const isImage = (mimeType) => mimeType?.startsWith('image/')
-const isVideo = (mimeType) => mimeType?.startsWith('video/')
-const isPdf = (mimeType) => mimeType === 'application/pdf'
-
-const isText = (mimeType) => {
-  return (
-    mimeType.startsWith('text/') ||
-    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
-  )
-}
 
 const copyToClipboard = async (text) => {
   try {
@@ -113,6 +111,15 @@ const close = () => {
               controls
               class="max-w-full max-h-[300px] rounded-lg"
             ></video>
+            <!-- 音频预览 -->
+            <audio
+              v-else-if="isAudio(file.mime_type)"
+              :src="`${file.preview_url}`"
+              controls
+              class="w-full"
+            >
+              您的浏览器不支持音频播放
+            </audio>
             <!-- PDF预览 -->
             <PDFViewer
               v-else-if="isPdf(file.mime_type)"

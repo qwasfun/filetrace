@@ -1,3 +1,14 @@
+export const isImage = (mimeType) => mimeType.startsWith('image/')
+export const isVideo = (mimeType) => mimeType?.startsWith('video/')
+export const isAudio = (mimeType) => mimeType.startsWith('audio/')
+export const isPdf = (mimeType) => mimeType === 'application/pdf'
+export const isText = (mimeType) => {
+  return (
+    mimeType.startsWith('text/') ||
+    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
+  )
+}
+
 export const getFileIcon = (mimeType) => {
   if (mimeType.startsWith('image/')) return '🖼️'
   if (mimeType.startsWith('video/')) return '🎥'

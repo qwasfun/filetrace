@@ -150,9 +150,17 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
 import { formatDate, formatSize } from '@/utils/format'
-import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import {
+  getFileIcon,
+  getFileTypeColor,
+  isImage,
+  isVideo,
+  isAudio,
+  isPdf,
+  isText,
+} from '@/utils/file'
+
 import PDFViewer from './PDFViewer.vue'
 import TextViewer from './TextViewer.vue'
 
@@ -164,15 +172,4 @@ const props = defineProps({
 })
 
 defineEmits(['close', 'add-note'])
-
-const isImage = (mimeType) => mimeType.startsWith('image/')
-const isVideo = (mimeType) => mimeType.startsWith('video/')
-const isPdf = (mimeType) => mimeType === 'application/pdf'
-const isAudio = (mimeType) => mimeType.startsWith('audio/')
-const isText = (mimeType) => {
-  return (
-    mimeType.startsWith('text/') ||
-    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
-  )
-}
 </script>

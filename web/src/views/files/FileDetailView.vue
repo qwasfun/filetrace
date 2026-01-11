@@ -1,8 +1,16 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { formatDate, formatSize } from '@/utils/format'
-import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import {
+  getFileIcon,
+  getFileTypeColor,
+  isImage,
+  isVideo,
+  isAudio,
+  isPdf,
+  isText,
+} from '@/utils/file'
 import fileService from '@/api/fileService.js'
 import UnifiedNotes from '@/components/UnifiedNotes.vue'
 import PDFViewer from '@/components/PDFViewer.vue'
@@ -16,17 +24,6 @@ const loading = ref(false)
 const showNotes = ref(false)
 const showRenameModal = ref(false)
 const newFileName = ref('')
-
-const isImage = computed(() => file.value?.mime_type?.startsWith('image/'))
-const isVideo = computed(() => file.value?.mime_type?.startsWith('video/'))
-const isPdf = computed(() => file.value?.mime_type === 'application/pdf')
-const isAudio = computed(() => file.value?.mime_type?.startsWith('audio/'))
-const isText = (mimeType) => {
-  return (
-    mimeType.startsWith('text/') ||
-    ['application/json', 'application/javascript', 'application/xml'].includes(mimeType)
-  )
-}
 
 const getFileExtension = (filename) => {
   const parts = filename?.split('.')

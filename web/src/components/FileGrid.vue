@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { formatDate, formatSize } from '@/utils/format'
-import { getFileIcon, getFileTypeColor } from '@/utils/file'
+import { getFileIcon, getFileTypeColor, isImage } from '@/utils/file'
 
 const props = defineProps({
   files: {
@@ -83,8 +83,6 @@ const emitSelection = () => {
 
 const hoveredFile = ref(null)
 const hoveredFolder = ref(null)
-
-const isImage = (mimeType) => mimeType.startsWith('image/')
 </script>
 
 <template>
