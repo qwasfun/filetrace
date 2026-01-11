@@ -287,10 +287,10 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
 
             <!-- 操作按钮 -->
             <div class="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-              <button
+              <router-link
+                :to="{ name: 'file-detail', params: { id: file.id } }"
                 class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
-                @click="$emit('view-details', file)"
-                title="查看详情"
+                title="查看详情页"
               >
                 <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -298,6 +298,26 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                     stroke-linejoin="round"
                     stroke-width="2"
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </router-link>
+              <button
+                class="btn btn-xs btn-ghost text-gray-500 hover:text-purple-600"
+                @click="$emit('view-details', file)"
+                title="快速查看"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                   />
                 </svg>
               </button>

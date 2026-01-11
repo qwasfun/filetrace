@@ -52,6 +52,9 @@ export default {
   getFiles(params) {
     return service.get('/v1/files/', { params })
   },
+  getFile(id) {
+    return service.get(`/v1/files/${id}`)
+  },
   deleteFile(id) {
     return service.delete(`/v1/files/${id}`)
   },
