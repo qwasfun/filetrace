@@ -52,7 +52,7 @@ const close = () => {
     @click.self="close"
   >
     <div
-      class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+      class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col"
     >
       <!-- 头部 -->
       <div
@@ -88,60 +88,86 @@ const close = () => {
           </svg>
         </button>
       </div>
-
       <!-- 内容区域 -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         <!-- 预览区域 -->
-        <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">📷 文件预览</h3>
-          <div
-            class="flex items-center justify-center min-h-[200px] bg-white dark:bg-gray-800 rounded-lg"
+
+        <!-- 图片预览 -->
+        <div
+          v-if="isImage(file.mime_type)"
+          class="flex items-center justify-center bg-gray-50 dark:bg-gray-800 h-full"
+        >
+          <img
+            :src="`${file.preview_url}`"
+            :alt="file.filename"
+            class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+          />
+        </div>
+
+        <!-- 视频预览 -->
+        <div
+          v-else-if="isVideo(file.mime_type)"
+          class="flex items-center justify-center bg-black h-full"
+        >
+          <video
+            :src="`${file.preview_url}`"
+            controls
+            class="max-w-full max-h-full rounded-lg shadow-lg"
           >
-            <!-- 图片预览 -->
-            <img
-              v-if="isImage(file.mime_type)"
-              :src="file.preview_url"
-              :alt="file.filename"
-              class="max-w-full max-h-[300px] object-contain rounded-lg"
-            />
-            <!-- 视频预览 -->
-            <video
-              v-else-if="isVideo(file.mime_type)"
-              :src="file.preview_url"
-              controls
-              class="max-w-full max-h-[300px] rounded-lg"
-            ></video>
-            <!-- 音频预览 -->
-            <audio
-              v-else-if="isAudio(file.mime_type)"
-              :src="`${file.preview_url}`"
-              controls
-              class="w-full"
-            >
+            您的浏览器不支持视频播放
+          </video>
+        </div>
+
+        <!-- PDF预览 -->
+        <PDFViewer v-else-if="isPdf(file.mime_type)" :url="file.preview_url" />
+
+        <!-- 音频预览 -->
+        <div v-else-if="isAudio(file.mime_type)" class="flex items-center justify-center p-8">
+          <div class="w-full max-w-md">
+            <div class="text-center mb-6">
+              <div
+                class="w-24 h-24 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-4xl mx-auto mb-4"
+              >
+                🎵
+              </div>
+              <h3 class="font-medium text-gray-900 dark:text-gray-100">
+                {{ file.filename }}
+              </h3>
+            </div>
+            <audio :src="`${file.preview_url}`" controls class="w-full">
               您的浏览器不支持音频播放
             </audio>
-            <!-- PDF预览 -->
-            <PDFViewer
-              v-else-if="isPdf(file.mime_type)"
-              :url="file.preview_url"
-              class="h-screen w-full"
-            />
-            <!-- 文本文件预览 -->
-            <TextViewer
-              v-else-if="isText(file.mime_type)"
-              :url="file.preview_url"
-              class="p-4 h-screen w-full"
-            />
-            <!-- 其他文件类型 -->
-            <div v-else class="text-center p-8">
-              <div :class="`text-6xl ${getFileTypeColor(file.mime_type)}`">
-                {{ getFileIcon(file.mime_type) }}
-              </div>
-              <p class="text-gray-600 dark:text-gray-400 mt-2">{{ file.mime_type }}</p>
-            </div>
           </div>
         </div>
 
+        <!-- 文本文件预览 -->
+        <TextViewer v-else-if="isText(file.mime_type)" :url="file.preview_url" class="p-4 h-full" />
+
+        <!-- 其他文件类型 -->
+        <div v-else class="flex flex-col items-center justify-center p-12 text-center">
+          <div
+            :class="`w-24 h-24 rounded-full flex items-center justify-center text-4xl mb-6 ${getFileTypeColor(file.mime_type)}`"
+          >
+            {{ getFileIcon(file.mime_type) }}
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            {{ file.filename }}
+          </h3>
+          <p class="text-gray-500 dark:text-gray-400 mb-6">
+            此文件类型 ({{ file.mime_type }}) 暂不支持预览
+          </p>
+          <a :href="`${file.download_url}`" target="_blank" download class="btn btn-primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+            下载文件
+          </a>
+        </div>
         <!-- 基本信息 -->
         <div class="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">📋 基本信息</h3>
@@ -318,7 +344,7 @@ const close = () => {
 
       <!-- 底部操作栏 -->
       <div
-        class="flex items-center justify-between gap-2 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+        class="flex flex-wrap sm:flex-row items-center justify-between gap-4 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
       >
         <div class="flex gap-2">
           <button @click="$emit('rename', file)" class="btn btn-sm btn-outline gap-2">
@@ -357,6 +383,20 @@ const close = () => {
             管理笔记
             <span v-if="file.notes_count > 0" class="badge badge-sm">{{ file.notes_count }}</span>
           </button>
+          <router-link
+            :to="{ name: 'file-detail', params: { id: file.id } }"
+            class="btn btn-sm btn-info"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            详情
+          </router-link>
           <a
             :href="file.download_url"
             target="_blank"
