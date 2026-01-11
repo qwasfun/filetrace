@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import FileUpload from '../../components/FileUpload.vue'
 import FileGrid from '../../components/FileGrid.vue'
 import FilePreview from '../../components/FilePreview.vue'
+import FileDetails from '../../components/FileDetails.vue'
 import UnifiedNotes from '../../components/UnifiedNotes.vue'
 import fileService from '../../api/fileService.js'
 import folderService from '../../api/folderService.js'
@@ -27,6 +28,8 @@ const newFolderName = ref('')
 const renameFolderName = ref('')
 const renameFileName = ref('')
 const previewFile = ref(null)
+const detailsFile = ref(null)
+const showDetails = ref(false)
 const notesItem = ref(null)
 const notesItemType = ref('file')
 const showNotes = ref(false)
@@ -308,6 +311,16 @@ const handleDelete = async (id) => {
 
 const handlePreview = (file) => {
   previewFile.value = file
+}
+const handleViewDetails = (file) => {
+  detailsFile.value = file
+  showDetails.value = true
+}
+
+showDetails.value = false // 关闭详情
+const closeDetails = () => {
+  showDetails.value = false
+  detailsFile.value = null
 }
 
 const handleManageNotes = (item, type) => {
@@ -698,6 +711,7 @@ onMounted(async () => {
             :selection-mode="isSelectionMode"
             :selected-files="selectedFiles"
             :selected-folders="selectedFolders"
+            @view-details="handleViewDetails"
             @selection-change="handleSelectionChange"
             @delete-file="handleDelete"
             @preview-file="handlePreview"
@@ -707,7 +721,6 @@ onMounted(async () => {
             @edit-folder="openRenameFolderModal"
             @rename-file="handleRenameFile"
           />
-
           <!-- Pagination -->
           <div class="flex justify-center mt-6" v-if="totalPages > 1">
             <div class="join">
@@ -732,6 +745,16 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- 文件详情模态框 -->
+    <FileDetails
+      :file="detailsFile"
+      :is-open="showDetails"
+      @close="closeDetails"
+      @preview="handlePreview"
+      @manage-notes="handleManageNotes"
+      @rename="handleRenameFile"
+      @delete="handleDelete"
+    />
     <!-- 文件预览模态框 -->
     <FilePreview
       :file="previewFile"

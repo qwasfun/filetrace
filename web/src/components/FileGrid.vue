@@ -36,6 +36,7 @@ const emit = defineEmits([
   'edit-folder',
   'rename-file',
   'selection-change',
+  'view-details',
 ])
 
 const localSelectedFiles = ref([...props.selectedFiles])
@@ -255,20 +256,6 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
                     ></path>
                   </svg>
                 </button>
-                <button
-                  @click.stop="$emit('manage-notes', file, 'file')"
-                  class="btn btn-sm btn-circle bg-blue-500 hover:bg-blue-600 text-white border-0 shadow-lg"
-                  title="管理笔记"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M12 4v16m8-8H4"
-                    ></path>
-                  </svg>
-                </button>
               </div>
             </div>
           </div>
@@ -300,6 +287,20 @@ const isImage = (mimeType) => mimeType.startsWith('image/')
 
             <!-- 操作按钮 -->
             <div class="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+              <button
+                class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
+                @click="$emit('view-details', file)"
+                title="查看详情"
+              >
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </button>
               <button
                 class="btn btn-xs btn-ghost text-gray-500 hover:text-blue-600"
                 @click="$emit('rename-file', file)"
